@@ -2,10 +2,13 @@ package devices
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+
+	"github.com/saitadikonda99/deployOS/pkg/types"
 )
 
 // TokenIssuer issues the signed device token returned to an agent after
@@ -15,16 +18,18 @@ type TokenIssuer interface {
 	Issue(ctx context.Context, device Device) (token string, expiresAt time.Time, err error)
 }
 
+// ErrInvalidToken is returned when a device token is missing, malformed,
+// expired, or signed with the wrong secret.
+var ErrInvalidToken = errors.New("invalid or expired device token")
+
 // deviceClaims are the JWT claims embedded in a device token.
 type deviceClaims struct {
 	UserID string `json:"user_id"`
 	jwt.RegisteredClaims
 }
 
-// JWTTokenIssuer issues HMAC-signed (HS256) JWTs identifying a device
-// and its owning user. Verifying these tokens is future work (it lands
-// with the heartbeat feature, which needs to authenticate agents);
-// Issue is all device registration requires today.
+// JWTTokenIssuer issues and verifies HMAC-signed (HS256) JWTs identifying
+// a device and its owning user.
 type JWTTokenIssuer struct {
 	secret []byte
 	ttl    time.Duration
@@ -57,4 +62,28 @@ func (j *JWTTokenIssuer) Issue(_ context.Context, device Device) (string, time.T
 	}
 
 	return signed, expiresAt, nil
+}
+
+// Verify checks a device token's signature and expiry, returning the
+// device and user IDs embedded in it. It satisfies
+// internal/connection.TokenVerifier, which the gRPC connection server
+// uses to authenticate agents - see docs/connection.md.
+func (j *JWTTokenIssuer) Verify(_ context.Context, tokenString string) (types.AgentID, string, error) {
+	var claims deviceClaims
+
+	token, err := jwt.ParseWithClaims(tokenString, &claims, func(t *jwt.Token) (any, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("unexpected signing method: %v", t.Header["alg"])
+		}
+		return j.secret, nil
+	})
+	if err != nil || !token.Valid {
+		return "", "", ErrInvalidToken
+	}
+
+	if claims.Subject == "" || claims.UserID == "" {
+		return "", "", ErrInvalidToken
+	}
+
+	return types.AgentID(claims.Subject), claims.UserID, nil
 }

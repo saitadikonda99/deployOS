@@ -1,0 +1,67 @@
+// ConnectionService: the persistent, authenticated, bidirectional stream
+// between an agent and the control plane. This is the transport future
+// features (heartbeats, command delivery, config push) will ride on -
+// this file defines the contract only; nothing implements it yet.
+syntax = "proto3";
+
+package deployos.v1;
+
+import "deployos/v1/common.proto";
+
+option go_package = "github.com/saitadikonda99/deployOS/gen/go/deployos/v1;deployosv1";
+
+// AuthenticateRequest opens a connection: the agent presents its
+// identity and credentials before any other traffic is accepted.
+message AuthenticateRequest {
+  Connection connection = 1;
+  Device device = 2;
+
+  reserved 3 to 5;
+}
+
+// AuthenticateResponse tells the agent whether authentication succeeded
+// and, if so, the session it now belongs to.
+message AuthenticateResponse {
+  bool authenticated = 1;
+  // session_id is an opaque identifier for this connection, valid for
+  // its lifetime. Absent when authenticated is false.
+  string session_id = 2;
+  // error describes why authentication failed. Absent when
+  // authenticated is true.
+  string error = 3;
+
+  reserved 4 to 5;
+}
+
+// ConnectionEnvelope wraps every message sent over a ConnectionService
+// stream. New message kinds are added as new oneof fields, so existing
+// clients that don't recognize a kind simply never construct or expect
+// it - the stream itself never has to change shape to add capabilities.
+message ConnectionEnvelope {
+  oneof payload {
+    AuthenticateRequest authenticate_request = 1;
+    AuthenticateResponse authenticate_response = 2;
+  }
+
+  reserved 3 to 10;
+}
+
+// ConnectionService manages the persistent connection between an agent
+// and the control plane: authentication followed by an open-ended,
+// bidirectional stream that later features (heartbeats, commands,
+// config push) will carry messages over.
+service ConnectionService {
+  // Connect opens a bidirectional stream. The first message from the
+  // agent must be an AuthenticateRequest; the control plane's first
+  // response must be an AuthenticateResponse. What flows afterward is
+  // defined by whichever feature is using the connection.
+  //
+  // Both directions intentionally share ConnectionEnvelope: either side
+  // may send any message kind the oneof supports, which is the point of
+  // a symmetric duplex envelope. Distinct request/response types would
+  // just duplicate the same oneof under two names.
+  // buf:lint:ignore RPC_REQUEST_RESPONSE_UNIQUE
+  // buf:lint:ignore RPC_REQUEST_STANDARD_NAME
+  // buf:lint:ignore RPC_RESPONSE_STANDARD_NAME
+  rpc Connect(stream ConnectionEnvelope) returns (stream ConnectionEnvelope);
+}

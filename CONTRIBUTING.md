@@ -50,6 +50,20 @@ A pre-commit hook (via Husky + lint-staged) runs Biome/Prettier on staged
 files automatically. CI re-runs the full lint/build/test matrix on every
 pull request.
 
+### Changing the protocol
+
+If your change touches anything under `proto/`, see
+[`docs/protocol.md`](./docs/protocol.md) for the full workflow. In short:
+
+```bash
+buf lint                                      # style/API-design checks
+buf breaking --against '.git#branch=main'     # catch accidental breaking changes
+buf generate                                  # regenerate gen/go/deployos/v1
+```
+
+Commit the regenerated files in `gen/` alongside your `.proto` change -
+CI fails if they're out of sync.
+
 ## Configuration
 
 The Go binaries (`cmd/agent`, `cmd/server`) read configuration from, in

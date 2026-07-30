@@ -1,0 +1,35 @@
+// AgentService: future agent-management operations (status queries
+// today; restart, upgrade, and configuration push are expected later).
+// This file defines the contract only - nothing implements it yet.
+syntax = "proto3";
+
+package deployos.v1;
+
+import "deployos/v1/common.proto";
+
+option go_package = "github.com/saitadikonda99/deployOS/gen/go/deployos/v1;deployosv1";
+
+// GetAgentStatusRequest asks for a single device's current status.
+message GetAgentStatusRequest {
+  string device_id = 1;
+
+  reserved 2 to 3;
+}
+
+// GetAgentStatusResponse reports a device's identity, liveness status,
+// and any extra metadata the control plane holds about it.
+message GetAgentStatusResponse {
+  Device device = 1;
+  Status status = 2;
+  Metadata metadata = 3;
+
+  reserved 4 to 5;
+}
+
+// AgentService will expose operations for managing individual agents.
+// Only a status query is defined today; restart, upgrade, and
+// configuration operations are expected to be added here later without
+// affecting GetAgentStatus.
+service AgentService {
+  rpc GetAgentStatus(GetAgentStatusRequest) returns (GetAgentStatusResponse);
+}

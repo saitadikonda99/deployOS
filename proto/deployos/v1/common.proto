@@ -1,0 +1,58 @@
+// Common messages shared across the DeployOS protocol: device identity,
+// connection credentials, liveness status, and free-form metadata. Every
+// other file in this package depends on this one, never the other way
+// around.
+syntax = "proto3";
+
+package deployos.v1;
+
+option go_package = "github.com/saitadikonda99/deployOS/gen/go/deployos/v1;deployosv1";
+
+// Device identifies a single machine participating in a DeployOS fleet.
+// This mirrors the fields collected during HTTP device registration
+// (see docs/device-registration.md) so the two protocols describe the
+// same entity.
+message Device {
+  // id is the device's UUID, generated and persisted by the agent.
+  string id = 1;
+  string hostname = 2;
+  string operating_system = 3;
+  string architecture = 4;
+  string deployos_version = 5;
+
+  // Reserved for future system-info fields (e.g. cpu_cores,
+  // memory_bytes) so they can be added without renumbering.
+  reserved 6 to 10;
+}
+
+// Connection carries the credentials and protocol version a client
+// presents when establishing a session with the control plane.
+message Connection {
+  // device_token is the signed token issued at device registration.
+  string device_token = 1;
+  // protocol_version identifies the version of this protocol the
+  // client speaks, allowing the control plane to negotiate or reject
+  // incompatible clients as the protocol evolves.
+  string protocol_version = 2;
+
+  reserved 3 to 5;
+}
+
+// Status is the liveness state of a device or connection. UNKNOWN is
+// the zero value: a device is UNKNOWN until the control plane has
+// observed it directly, rather than defaulting to a specific state.
+enum Status {
+  STATUS_UNKNOWN = 0;
+  STATUS_ONLINE = 1;
+  STATUS_OFFLINE = 2;
+
+  reserved 3 to 5;
+}
+
+// Metadata is a free-form set of key/value pairs attached to a message,
+// for future extensibility that doesn't warrant a dedicated field.
+message Metadata {
+  map<string, string> entries = 1;
+
+  reserved 2 to 3;
+}

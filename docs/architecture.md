@@ -16,8 +16,9 @@ runs on a managed machine is Go, under [`cmd/`](../cmd),
 | `apps/dashboard`            | TypeScript | Web UI for operators to manage deployments, secrets, and monitoring                                           |
 | `internal/devices`          | Go         | Device registration: repository/service/handler for `POST /api/v1/devices/register` and `GET /api/v1/devices` |
 | `internal/auth`             | Go         | Authenticates operators against Supabase Auth on the control plane's behalf                                   |
-| `pkg/protocol`, `pkg/types` | Go         | Wire types and value types shared between the control plane and agents                                        |
+| `pkg/protocol`, `pkg/types` | Go         | Wire types and value types shared between the control plane and agents (HTTP)                                 |
 | `pkg/api`                   | Go         | HTTP request/response contracts shared by every Go server                                                     |
+| `gen/go/deployos/v1`        | Go         | Generated Protocol Buffers/gRPC types (see [protocol.md](./protocol.md)) - design only, not yet implemented   |
 
 The control plane is the only component with Supabase credentials; see
 [device-registration.md](./device-registration.md) for how the agent,
@@ -35,6 +36,10 @@ control plane, and Supabase interact for that feature specifically.
 - **`pkg/`** holds the small amount of Go that's meant to be shared beyond
   this module's own binaries - wire types and API contracts - so it stays
   intentionally minimal.
+- **`proto/`** holds the Protocol Buffers source for the future
+  agent <-> control-plane gRPC protocol; **`gen/`** holds the Go code
+  generated from it. Neither is implemented against yet - see
+  [protocol.md](./protocol.md).
 
 ## Why this split
 
@@ -48,15 +53,20 @@ The dashboard is a product surface that iterates on UI, not infrastructure
 behavior, so it stays on the TypeScript/Next.js toolchain that's better
 suited to that.
 
-`pkg/protocol` is the contract between the control plane and agents: it
-defines message shapes only, not transport. This keeps the transport (HTTP
-today, potentially gRPC later) an implementation detail of whichever side is
-calling it. `internal/agent` is deliberately structured so a gRPC listener
-can be added there later without changing how `cmd/agent` wires things up.
+`pkg/protocol` is the HTTP-era contract between the control plane and
+agents: it defines message shapes only, not transport. The Protocol
+Buffers definitions in `proto/` (see [protocol.md](./protocol.md)) are the
+next evolution of that same idea, for the persistent, bidirectional
+gRPC connection future features (heartbeats, command delivery) need.
+`internal/agent` is deliberately structured so a gRPC listener can be
+added there later without changing how `cmd/agent` wires things up.
 
 ## Status
 
 This document describes the intended shape of the system as features land.
 Device registration (see [device-registration.md](./device-registration.md))
-is the first real feature implemented; deployment, HTTPS, secrets,
-databases, monitoring, backups, and clustering are not yet implemented.
+is the first real feature implemented. The gRPC protocol (see
+[protocol.md](./protocol.md)) is designed and its Go code generated, but
+nothing implements it yet - no gRPC server, no gRPC client, no persistent
+connection. Deployment, HTTPS, secrets, databases, monitoring, backups,
+and clustering are not yet implemented.

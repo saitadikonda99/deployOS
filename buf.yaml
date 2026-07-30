@@ -1,0 +1,15 @@
+version: v2
+modules:
+  - path: proto
+lint:
+  use:
+    - STANDARD
+  except:
+    # UNKNOWN is intentionally the zero value for deployos.v1.Status (see
+    # common.proto) instead of a dedicated *_UNSPECIFIED value: a device
+    # is genuinely "unknown" until observed, which is a meaningful state
+    # here rather than a placeholder.
+    - ENUM_ZERO_VALUE_SUFFIX
+breaking:
+  use:
+    - FILE

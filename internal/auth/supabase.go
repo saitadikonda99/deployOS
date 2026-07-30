@@ -52,7 +52,10 @@ func (a *SupabaseAuthenticator) Authenticate(ctx context.Context, accessToken st
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return User{}, ErrInvalidToken
+		if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
+			return User{}, ErrInvalidToken
+		}
+		return User{}, fmt.Errorf("supabase auth returned status %d", resp.StatusCode)
 	}
 
 	var body supabaseUserResponse

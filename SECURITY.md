@@ -18,8 +18,8 @@ Please include as much of the following as you can:
 
 - A description of the vulnerability and its potential impact.
 - Steps to reproduce, or a proof-of-concept.
-- The affected component (`apps/dashboard`, `apps/control-plane`,
-  `crates/agent`, etc.) and version/commit.
+- The affected component (`apps/dashboard`, `cmd/server`, `cmd/agent`,
+  etc.) and version/commit.
 - Any known mitigations.
 
 ## What to expect
@@ -38,7 +38,7 @@ section will list which versions receive fixes.
 
 ## Scope
 
-This policy covers the code in this repository (`apps/`, `crates/`,
-`packages/`). Vulnerabilities in upstream dependencies should be reported
+This policy covers the code in this repository (`apps/`, `cmd/`,
+`internal/`, `pkg/`). Vulnerabilities in upstream dependencies should be reported
 to the respective upstream project, though we appreciate a heads-up so we
 can track and update our own dependency.

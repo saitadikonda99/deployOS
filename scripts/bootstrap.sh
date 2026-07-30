@@ -17,7 +17,7 @@ require() {
 echo "==> Checking toolchain"
 require node "Install Node.js >= 20: https://nodejs.org"
 require pnpm "Enable via corepack: 'corepack enable && corepack prepare pnpm@latest --activate'"
-require cargo "Install Rust via rustup: https://rustup.rs"
+require go "Install Go: https://go.dev/doc/install"
 
 node_major="$(node -p 'process.versions.node.split(".")[0]')"
 if [ "$node_major" -lt 20 ]; then
@@ -28,4 +28,7 @@ fi
 echo "==> Installing JS dependencies"
 pnpm install --frozen-lockfile=false
 
-echo "==> Done. Try: pnpm build"
+echo "==> Downloading Go dependencies"
+go mod download
+
+echo "==> Done. Try: pnpm build && go build ./..."

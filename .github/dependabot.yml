@@ -15,12 +15,12 @@ updates:
       prefix: "chore"
       include: scope
 
-  - package-ecosystem: "cargo"
+  - package-ecosystem: "gomod"
     directory: "/"
     schedule:
       interval: "weekly"
     groups:
-      cargo-dependencies:
+      go-dependencies:
         patterns:
           - "*"
     labels:

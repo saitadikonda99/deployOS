@@ -38,10 +38,11 @@ body:
       label: Component
       options:
         - apps/dashboard
-        - apps/control-plane
-        - crates/agent
-        - crates/protocol
-        - crates/common
+        - cmd/server (control plane)
+        - cmd/agent
+        - cmd/cli
+        - pkg (api/protocol/types)
+        - internal (config/logging/docker/etc.)
         - tooling / CI
         - documentation
         - new component

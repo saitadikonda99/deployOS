@@ -1,0 +1,13 @@
+# Copy to config.yaml and adjust as needed. Every key is optional; the
+# values below are the built-in defaults. Environment variables (see
+# .env.example) take precedence over this file.
+
+environment: development
+log_level: info
+
+agent:
+  id: ""
+  http_addr: ":8081"
+
+server:
+  http_addr: ":8080"

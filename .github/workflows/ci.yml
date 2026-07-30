@@ -42,23 +42,31 @@ jobs:
       - name: Build
         run: pnpm build
 
-  rust:
-    name: Rust - fmt, clippy, test
+  go:
+    name: Go - fmt, vet, lint, build, test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/setup-go@v5
         with:
-          components: rustfmt, clippy
-
-      - uses: Swatinem/rust-cache@v2
+          go-version: "1.24"
+          check-latest: true
+          cache: true
 
       - name: Format check
-        run: cargo fmt --all -- --check
+        run: |
+          diff -u <(echo -n) <(gofmt -l .)
 
-      - name: Clippy
-        run: cargo clippy --workspace --all-targets -- -D warnings
+      - name: Vet
+        run: go vet ./...
+
+      - uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+
+      - name: Build
+        run: go build ./...
 
       - name: Test
-        run: cargo test --workspace
+        run: go test ./...

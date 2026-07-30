@@ -21,8 +21,8 @@
 - [ ] `pnpm lint`
 - [ ] `pnpm build`
 - [ ] `pnpm test` (if applicable)
-- [ ] `cargo clippy --workspace` (if Rust changed)
-- [ ] `cargo test --workspace` (if Rust changed)
+- [ ] `golangci-lint run ./...` (if Go changed)
+- [ ] `go build ./...` and `go test ./...` (if Go changed)
 - [ ] Manually verified: <!-- describe -->
 
 ## Changeset

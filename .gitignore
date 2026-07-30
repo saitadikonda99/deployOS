@@ -12,18 +12,23 @@ out/
 # Turborepo
 .turbo/
 
-# Rust
-target/
-**/*.rs.bk
+# Go
+/bin/
+*.exe
+*.test
 
 # Testing / coverage
 coverage/
+coverage.out
 
 # Env files
 .env
 .env.local
 .env.*.local
 !.env.example
+
+# Local config (see config.example.yaml)
+config.yaml
 
 # Logs
 *.log

@@ -16,10 +16,11 @@ body:
       description: Which part of DeployOS is affected?
       options:
         - apps/dashboard
-        - apps/control-plane
-        - crates/agent
-        - crates/protocol
-        - crates/common
+        - cmd/server (control plane)
+        - cmd/agent
+        - cmd/cli
+        - pkg (api/protocol/types)
+        - internal (config/logging/docker/etc.)
         - tooling / CI
         - documentation
         - other
@@ -68,7 +69,7 @@ body:
         OS:
         Node.js version:
         pnpm version:
-        Rust version:
+        Go version:
     validations:
       required: true
 

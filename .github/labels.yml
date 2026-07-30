@@ -33,15 +33,18 @@
 - name: "area: dashboard"
   color: "5319e7"
   description: apps/dashboard
-- name: "area: control-plane"
+- name: "area: server"
   color: "5319e7"
-  description: apps/control-plane
+  description: cmd/server (control plane)
 - name: "area: agent"
   color: "5319e7"
-  description: crates/agent
+  description: cmd/agent, internal/agent
+- name: "area: cli"
+  color: "5319e7"
+  description: cmd/cli
 - name: "area: protocol"
   color: "5319e7"
-  description: crates/protocol
+  description: pkg/protocol
 - name: "area: tooling"
   color: "5319e7"
   description: Build tooling, CI, linting

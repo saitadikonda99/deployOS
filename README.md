@@ -42,8 +42,9 @@ capabilities of a cloud platform without renting one.
 
 ## High-level architecture
 
-DeployOS is split along one boundary: components that manage the fleet, and
-components that run on each machine being managed.
+DeployOS standardizes its entire backend on Go. The dashboard is the one
+TypeScript surface left; everything that manages a fleet or runs on a
+managed machine is Go.
 
 ```
                          ┌───────────────────────────┐
@@ -54,27 +55,28 @@ components that run on each machine being managed.
                                        ▼
                          ┌───────────────────────────┐
                          │      Control Plane        │
-                         │ apps/control-plane (TS)   │
+                         │      cmd/server (Go)      │
                          │  fleet & deployment state │
                          └─────────────┬─────────────┘
-                                       │ deployos-protocol
+                                       │ pkg/protocol
                        ┌───────────────┼───────────────┐
                        ▼               ▼               ▼
                  ┌───────────┐   ┌───────────┐   ┌───────────┐
                  │   Agent   │   │   Agent   │   │   Agent   │
-                 │ crates/   │   │ crates/   │   │ crates/   │
+                 │  cmd/     │   │  cmd/     │   │  cmd/     │
                  │  agent    │   │  agent    │   │  agent    │
-                 │  (Rust)   │   │  (Rust)   │   │  (Rust)   │
+                 │   (Go)    │   │   (Go)    │   │   (Go)    │
                  └───────────┘   └───────────┘   └───────────┘
                   node A            node B            node C
 ```
 
-The **control plane** and **dashboard** are TypeScript applications that
-iterate quickly and hold the source of truth for cluster state. The
-**agent** is a small, dependency-light Rust binary that runs on every
-managed machine, reports health, and executes instructions from the control
-plane. The two sides communicate over types defined once, in
-`deployos-protocol`, so the wire contract can't drift between them. See
+The **control plane** holds the source of truth for cluster state and is
+what the **dashboard** and every **agent** talk to. Each **agent** is a
+small Go binary that runs on every managed machine, reports health, and
+will execute instructions from the control plane. The two sides communicate
+over types defined once, in `pkg/protocol`, so the wire contract can't
+drift between them. Operators also have a `deployos` CLI
+(`cmd/cli`) for local diagnostics and, eventually, fleet management. See
 [`docs/architecture.md`](./docs/architecture.md) for more detail.
 
 ## Repository layout
@@ -82,13 +84,26 @@ plane. The two sides communicate over types defined once, in
 ```
 deployos/
 ├── apps/
-│   ├── dashboard/       Web dashboard (Next.js/TypeScript)
-│   └── control-plane/   Fleet & deployment orchestration API (Node/TypeScript)
-├── crates/
-│   ├── agent/           Node agent binary (Rust)
-│   ├── common/          Shared Rust utilities and error types
-│   └── protocol/        Wire types shared between control plane and agents
-├── packages/            Shared TypeScript packages (as they're extracted)
+│   └── dashboard/       Web dashboard (Next.js/TypeScript)
+├── cmd/
+│   ├── agent/           Node agent binary entry point (Go)
+│   ├── server/          Control plane binary entry point (Go)
+│   └── cli/             deployos CLI entry point (Go, Cobra)
+├── internal/
+│   ├── agent/           Agent process implementation
+│   ├── config/          Configuration loading (env, .env, YAML)
+│   ├── docker/          Future container-lifecycle interface
+│   ├── logging/         Structured JSON logging
+│   ├── monitoring/      Health-check registry
+│   ├── runtime/         Shared graceful-shutdown HTTP server
+│   ├── scheduler/       Future job-scheduling interface
+│   ├── auth/            Future authN/authZ
+│   ├── discovery/       Future agent/control-plane discovery
+│   └── secrets/         Future secrets storage
+├── pkg/
+│   ├── api/             HTTP request/response contracts
+│   ├── protocol/        Wire types shared between control plane and agents
+│   └── types/           Foundational value types (agent IDs, versions)
 ├── docs/                Architecture and subsystem documentation
 ├── scripts/             Repo automation (bootstrap, etc.)
 ├── docker/              Container build/compose files, added per-service
@@ -101,35 +116,44 @@ deployos/
   designed to be run unattended on real machines: crashes are handled,
   upgrades are safe, and there is no step that only works on the author's
   machine.
-- **No placeholders.** Code that lands on `main` compiles, lints, and does
-  what it claims. Speculative stubs and TODO-driven scaffolding are not
-  merged; a feature ships when it's real.
+- **No placeholders in `cmd/` and `internal/`.** Code that lands on `main`
+  compiles, lints, and does what it claims. The CLI's placeholder commands
+  are the deliberate exception, called out explicitly rather than left to
+  guesswork.
 - **A typed contract between fleet and node.** The control plane and the
   agents that run on managed machines never share ambient assumptions about
   message shapes — everything crosses that boundary through
-  `deployos-protocol`.
-- **Small, composable pieces.** Prefer several well-scoped crates/packages
-  over one large one. `packages/` and `crates/` are expected to grow as
-  functionality is extracted, not stay flat forever.
+  `pkg/protocol`.
+- **Thin `cmd/`, real `internal/`.** Binaries under `cmd/` parse arguments
+  and wire dependencies together; the behavior they wire up lives in
+  `internal/`, one package per concern.
 - **Automate the boring parts.** Formatting, linting, import order, and
-  commit hygiene are enforced by tooling (Biome, Prettier, Husky,
-  lint-staged, Changesets), not code review comments.
+  commit hygiene are enforced by tooling (Biome, Prettier, gofmt,
+  golangci-lint, Husky, lint-staged, Changesets), not code review comments.
 
 ## Development
 
 Requirements: [Node.js](https://nodejs.org) >= 20, [pnpm](https://pnpm.io)
 (via [Corepack](https://nodejs.org/api/corepack.html)), and
-[Rust](https://www.rust-lang.org/tools/install) (stable).
+[Go](https://go.dev/doc/install) (latest stable).
 
 ```bash
 ./scripts/bootstrap.sh   # verifies your toolchain and installs JS deps
 
-pnpm build                # turbo-orchestrated build across all TS apps/packages
+pnpm build                # turbo-orchestrated build across all TS apps
 pnpm lint                 # Biome across the whole workspace
 pnpm format               # Biome + Prettier
-cargo build --workspace   # build the Rust crates
-cargo test --workspace    # test the Rust crates
+
+go build ./...            # build every Go binary
+go vet ./...               # Go's static checks
+golangci-lint run ./...    # Go linting
+go test ./...              # Go unit tests
 ```
+
+Copy [`.env.example`](./.env.example) to `.env` and/or
+[`config.example.yaml`](./config.example.yaml) to `config.yaml` to
+configure the agent and control plane locally; see
+[CONTRIBUTING.md](./CONTRIBUTING.md) for details.
 
 ## Roadmap
 

@@ -7,7 +7,7 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "ignore": ["**/dist", "**/.next", "**/.turbo", "**/coverage", "**/target", "**/node_modules"]
+    "ignore": ["**/dist", "**/.next", "**/.turbo", "**/coverage", "**/bin", "**/node_modules"]
   },
   "organizeImports": {
     "enabled": true

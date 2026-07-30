@@ -1,0 +1,60 @@
+// CommandService: how the control plane will deliver commands to an
+// agent and receive their results. Nothing executes a command yet -
+// this file defines the contract only.
+syntax = "proto3";
+
+package deployos.v1;
+
+import "deployos/v1/common.proto";
+
+option go_package = "github.com/saitadikonda99/deployOS/gen/go/deployos/v1;deployosv1";
+
+// Command is a single instruction for an agent to carry out. kind is a
+// free-form string rather than an enum because the set of command
+// kinds isn't defined yet and will grow as features (deployments,
+// restarts, upgrades) land - an enum would need a breaking change or
+// awkward "UNSPECIFIED" values for each one added later.
+message Command {
+  string id = 1;
+  string kind = 2;
+  Metadata arguments = 3;
+
+  reserved 4 to 10;
+}
+
+// CommandResult reports how an agent's execution of a Command went.
+message CommandResult {
+  string command_id = 1;
+  bool success = 2;
+  // message is a human-readable outcome description, populated on
+  // both success and failure.
+  string message = 3;
+  Metadata details = 4;
+
+  reserved 5 to 10;
+}
+
+// DeliverRequest wraps the Command being sent. It's a distinct type
+// from Command itself so this RPC's request shape can evolve (e.g. to
+// add delivery options) independently of the reusable Command message.
+message DeliverRequest {
+  Command command = 1;
+
+  reserved 2 to 3;
+}
+
+// DeliverResponse wraps the resulting CommandResult, for the same
+// reason DeliverRequest wraps Command.
+message DeliverResponse {
+  CommandResult result = 1;
+
+  reserved 2 to 3;
+}
+
+// CommandService will let the control plane deliver commands to an
+// agent and collect their results. No delivery mechanism, retry policy,
+// or execution logic exists yet.
+service CommandService {
+  // Deliver sends a single command and waits for its result.
+  rpc Deliver(DeliverRequest) returns (DeliverResponse);
+}

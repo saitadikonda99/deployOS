@@ -90,20 +90,23 @@ deployos/
 │   ├── server/          Control plane binary entry point (Go)
 │   └── cli/             deployos CLI entry point (Go, Cobra)
 ├── internal/
-│   ├── agent/           Agent process implementation
+│   ├── agent/           Agent process implementation (identity, registration, health)
+│   ├── auth/            Authenticates operators against Supabase Auth
 │   ├── config/          Configuration loading (env, .env, YAML)
+│   ├── devices/         Device registration (repository/service/handler)
 │   ├── docker/          Future container-lifecycle interface
 │   ├── logging/         Structured JSON logging
 │   ├── monitoring/      Health-check registry
 │   ├── runtime/         Shared graceful-shutdown HTTP server
 │   ├── scheduler/       Future job-scheduling interface
-│   ├── auth/            Future authN/authZ
 │   ├── discovery/       Future agent/control-plane discovery
 │   └── secrets/         Future secrets storage
 ├── pkg/
 │   ├── api/             HTTP request/response contracts
 │   ├── protocol/        Wire types shared between control plane and agents
 │   └── types/           Foundational value types (agent IDs, versions)
+├── supabase/
+│   └── migrations/      SQL migrations (users, devices, projects)
 ├── docs/                Architecture and subsystem documentation
 ├── scripts/             Repo automation (bootstrap, etc.)
 ├── docker/              Container build/compose files, added per-service
@@ -159,22 +162,25 @@ configure the agent and control plane locally; see
 
 DeployOS is being built in the open, in phases:
 
-1. **Foundation** _(this repository, today)_ — monorepo scaffolding,
-   tooling, and CI.
-2. **Deploy from Git** — build and run an application from a repository on
+1. **Foundation** _(done)_ — monorepo scaffolding, tooling, and CI.
+2. **Device registration** _(this repository, today - see
+   [docs/device-registration.md](./docs/device-registration.md))_ —
+   agents register themselves with the control plane and receive a
+   signed device token.
+3. **Deploy from Git** — build and run an application from a repository on
    a single node.
-3. **Automatic HTTPS** — certificate issuance and renewal with zero
+4. **Automatic HTTPS** — certificate issuance and renewal with zero
    configuration.
-4. **Docker management** — container lifecycle as a managed platform
+5. **Docker management** — container lifecycle as a managed platform
    primitive, not a manual `docker` invocation.
-5. **Secrets** — first-class secret storage and injection for deployed
+6. **Secrets** — first-class secret storage and injection for deployed
    applications.
-6. **Databases** — managed database provisioning and lifecycle.
-7. **Monitoring** — metrics, logs, and alerting out of the box.
-8. **Backups** — automated, verifiable backup and restore.
-9. **AI-powered operations** — assisted diagnosis, remediation suggestions,
-   and operational summaries.
-10. **Multi-device fleets** — multiple machines operated as a single
+7. **Databases** — managed database provisioning and lifecycle.
+8. **Monitoring** — metrics, logs, and alerting out of the box.
+9. **Backups** — automated, verifiable backup and restore.
+10. **AI-powered operations** — assisted diagnosis, remediation suggestions,
+    and operational summaries.
+11. **Multi-device fleets** — multiple machines operated as a single
     logical cloud.
 
 Each phase ships as working software behind the same standards described

@@ -8,14 +8,20 @@ runs on a managed machine is Go, under [`cmd/`](../cmd),
 
 ## Components
 
-| Component                   | Language   | Responsibility                                                                                 |
-| --------------------------- | ---------- | ---------------------------------------------------------------------------------------------- |
-| `cmd/server`                | Go         | Control plane: source of truth for cluster state; exposes the API the dashboard and agents use |
-| `cmd/agent`                 | Go         | Runs on each managed machine; reports health and will execute control-plane orders             |
-| `cmd/cli`                   | Go         | `deployos` CLI - operator entry point (version, doctor, agent management)                      |
-| `apps/dashboard`            | TypeScript | Web UI for operators to manage deployments, secrets, and monitoring                            |
-| `pkg/protocol`, `pkg/types` | Go         | Wire types and value types shared between the control plane and agents                         |
-| `pkg/api`                   | Go         | HTTP request/response contracts shared by every Go server                                      |
+| Component                   | Language   | Responsibility                                                                                                |
+| --------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------- |
+| `cmd/server`                | Go         | Control plane: source of truth for cluster state; exposes the API the dashboard and agents use                |
+| `cmd/agent`                 | Go         | Runs on each managed machine; registers itself, reports health, and will execute control-plane orders         |
+| `cmd/cli`                   | Go         | `deployos` CLI - operator entry point (version, doctor, agent management)                                     |
+| `apps/dashboard`            | TypeScript | Web UI for operators to manage deployments, secrets, and monitoring                                           |
+| `internal/devices`          | Go         | Device registration: repository/service/handler for `POST /api/v1/devices/register` and `GET /api/v1/devices` |
+| `internal/auth`             | Go         | Authenticates operators against Supabase Auth on the control plane's behalf                                   |
+| `pkg/protocol`, `pkg/types` | Go         | Wire types and value types shared between the control plane and agents                                        |
+| `pkg/api`                   | Go         | HTTP request/response contracts shared by every Go server                                                     |
+
+The control plane is the only component with Supabase credentials; see
+[device-registration.md](./device-registration.md) for how the agent,
+control plane, and Supabase interact for that feature specifically.
 
 ## Package layout
 
@@ -51,6 +57,6 @@ can be added there later without changing how `cmd/agent` wires things up.
 ## Status
 
 This document describes the intended shape of the system as features land.
-At this stage the repository contains only the scaffolding described above;
-no deployment, HTTPS, secrets, database, monitoring, backup, or clustering
-logic has been implemented yet.
+Device registration (see [device-registration.md](./device-registration.md))
+is the first real feature implemented; deployment, HTTPS, secrets,
+databases, monitoring, backups, and clustering are not yet implemented.

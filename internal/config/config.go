@@ -7,8 +7,11 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
 )
@@ -21,18 +24,27 @@ type Config struct {
 	// LogLevel is one of "debug", "info", "warn", "error".
 	LogLevel string `mapstructure:"log_level"`
 
-	Agent  AgentConfig  `mapstructure:"agent"`
-	Server ServerConfig `mapstructure:"server"`
+	Agent       AgentConfig       `mapstructure:"agent"`
+	Server      ServerConfig      `mapstructure:"server"`
+	Supabase    SupabaseConfig    `mapstructure:"supabase"`
+	DeviceToken DeviceTokenConfig `mapstructure:"device_token"`
 }
 
 // AgentConfig configures the DeployOS node agent (cmd/agent).
 type AgentConfig struct {
-	// ID identifies this agent within a fleet. Empty until the agent has
-	// been registered with a control plane.
-	ID string `mapstructure:"id"`
 	// HTTPAddr is the address the agent's health/status HTTP server
 	// listens on, e.g. ":8081".
 	HTTPAddr string `mapstructure:"http_addr"`
+	// DataDir is where the agent persists its device ID and device
+	// token across restarts. Defaults to "<home>/.deployos".
+	DataDir string `mapstructure:"data_dir"`
+	// APIBaseURL is the DeployOS control plane's base URL. The agent
+	// only ever talks to this API - never to Supabase directly.
+	APIBaseURL string `mapstructure:"api_base_url"`
+	// UserAccessToken is the operator's Supabase user access token,
+	// used to authenticate device registration requests. Obtained
+	// out-of-band until a proper login flow exists.
+	UserAccessToken string `mapstructure:"user_access_token"`
 }
 
 // ServerConfig configures the DeployOS control plane (cmd/server).
@@ -40,6 +52,29 @@ type ServerConfig struct {
 	// HTTPAddr is the address the control plane's HTTP server listens
 	// on, e.g. ":8080".
 	HTTPAddr string `mapstructure:"http_addr"`
+}
+
+// SupabaseConfig configures the control plane's connection to Supabase.
+// The control plane is the only DeployOS component that talks to
+// Supabase; agents never do.
+type SupabaseConfig struct {
+	// URL is the Supabase project URL, e.g. "https://xyz.supabase.co".
+	URL string `mapstructure:"url"`
+	// AnonKey is the Supabase project's anon/public API key, used to
+	// authenticate user access tokens against Supabase Auth.
+	AnonKey string `mapstructure:"anon_key"`
+	// DatabaseURL is the Postgres connection string for the Supabase
+	// project's database.
+	DatabaseURL string `mapstructure:"database_url"`
+}
+
+// DeviceTokenConfig configures the tokens the control plane issues to
+// agents on successful registration.
+type DeviceTokenConfig struct {
+	// Secret signs issued device tokens (HMAC). Required in production.
+	Secret string `mapstructure:"secret"`
+	// TTL is how long an issued device token remains valid.
+	TTL time.Duration `mapstructure:"ttl"`
 }
 
 // Options controls how Load locates its configuration file.
@@ -90,8 +125,15 @@ func Load(opts Options) (*Config, error) {
 	}
 
 	var cfg Config
-	if err := v.Unmarshal(&cfg); err != nil {
+	decodeHook := viper.DecodeHook(mapstructure.ComposeDecodeHookFunc(
+		mapstructure.StringToTimeDurationHookFunc(),
+	))
+	if err := v.Unmarshal(&cfg, decodeHook); err != nil {
 		return nil, fmt.Errorf("unmarshaling config: %w", err)
+	}
+
+	if cfg.Agent.DataDir == "" {
+		cfg.Agent.DataDir = defaultAgentDataDir()
 	}
 
 	return &cfg, nil
@@ -100,6 +142,31 @@ func Load(opts Options) (*Config, error) {
 func setDefaults(v *viper.Viper) {
 	v.SetDefault("environment", "development")
 	v.SetDefault("log_level", "info")
+
 	v.SetDefault("agent.http_addr", ":8081")
+	v.SetDefault("agent.api_base_url", "http://localhost:8080")
+	// Empty-string defaults below aren't meaningful values - they exist
+	// so viper knows these keys exist and reads their environment
+	// variable overrides. Without a default (or config file entry),
+	// viper.Unmarshal silently ignores env vars for otherwise-unknown
+	// keys even with AutomaticEnv enabled.
+	v.SetDefault("agent.data_dir", "")
+	v.SetDefault("agent.user_access_token", "")
+
 	v.SetDefault("server.http_addr", ":8080")
+
+	v.SetDefault("supabase.url", "")
+	v.SetDefault("supabase.anon_key", "")
+	v.SetDefault("supabase.database_url", "")
+
+	v.SetDefault("device_token.secret", "")
+	v.SetDefault("device_token.ttl", "8760h")
+}
+
+func defaultAgentDataDir() string {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return ".deployos"
+	}
+	return filepath.Join(home, ".deployos")
 }

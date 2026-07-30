@@ -58,6 +58,22 @@ variables. Copy [`.env.example`](./.env.example) to `.env` and/or
 [`config.example.yaml`](./config.example.yaml) to `config.yaml` to set
 local overrides; both are gitignored.
 
+`cmd/server` additionally requires a Supabase project - see
+[`supabase/README.md`](./supabase/README.md) and
+[`docs/device-registration.md`](./docs/device-registration.md).
+
+### Running the Postgres integration test
+
+`internal/devices` includes a real-database integration test
+(`postgres_integration_test.go`) alongside its unit tests. It's skipped
+by default; to run it, apply the migrations in
+[`supabase/migrations/`](./supabase/migrations/) to a Postgres database
+and set:
+
+```bash
+DEPLOYOS_TEST_DATABASE_URL=postgres://... go test ./internal/devices/...
+```
+
 ## Commit messages
 
 This project uses [Conventional Commits](https://www.conventionalcommits.org/):

@@ -75,7 +75,11 @@ what the **dashboard** and every **agent** talk to. Each **agent** is a
 small Go binary that runs on every managed machine, reports health, and
 will execute instructions from the control plane. The two sides communicate
 over types defined once, in `pkg/protocol`, so the wire contract can't
-drift between them. Operators also have a `deployos` CLI
+drift between them. A Protocol Buffers/gRPC protocol for the persistent,
+bidirectional connection future features need is designed in `proto/`
+(generated Go code in `gen/`) - see
+[`docs/protocol.md`](./docs/protocol.md) - though nothing implements it
+yet. Operators also have a `deployos` CLI
 (`cmd/cli`) for local diagnostics and, eventually, fleet management. See
 [`docs/architecture.md`](./docs/architecture.md) for more detail.
 
@@ -105,6 +109,10 @@ deployos/
 │   ├── api/             HTTP request/response contracts
 │   ├── protocol/        Wire types shared between control plane and agents
 │   └── types/           Foundational value types (agent IDs, versions)
+├── proto/
+│   └── deployos/v1/     Protocol Buffers source (future gRPC protocol; design only)
+├── gen/
+│   └── go/deployos/v1/  Generated Go code from proto/ (committed, never hand-edited)
 ├── supabase/
 │   └── migrations/      SQL migrations (users, devices, projects)
 ├── docs/                Architecture and subsystem documentation
@@ -151,6 +159,9 @@ go build ./...            # build every Go binary
 go vet ./...               # Go's static checks
 golangci-lint run ./...    # Go linting
 go test ./...              # Go unit tests
+
+buf lint                   # protobuf style checks (only needed if you touch proto/)
+buf generate                # regenerate gen/ from proto/ - see docs/protocol.md
 ```
 
 Copy [`.env.example`](./.env.example) to `.env` and/or

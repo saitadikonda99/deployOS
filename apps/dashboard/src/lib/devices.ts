@@ -3,6 +3,8 @@ export interface Device {
   hostname: string;
   operating_system: string;
   architecture: string;
+  /** Live connection state - "connected" or "disconnected" - from the
+   * control plane's in-memory Connection Manager, not a stored field. */
   status: string;
   created_at: string;
 }

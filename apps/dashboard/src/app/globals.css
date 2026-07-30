@@ -5,6 +5,7 @@
   --color-muted: #6b7280;
   --color-border: #e5e7eb;
   --color-accent: #2563eb;
+  --color-online: #16a34a;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -14,6 +15,7 @@
     --color-muted: #9ca3af;
     --color-border: #2a2e37;
     --color-accent: #60a5fa;
+    --color-online: #4ade80;
   }
 }
 
@@ -90,8 +92,13 @@ th {
   border-radius: 999px;
   font-size: 0.75rem;
   font-weight: 600;
-  background: color-mix(in srgb, var(--color-accent) 15%, transparent);
-  color: var(--color-accent);
+  background: color-mix(in srgb, var(--color-muted) 15%, transparent);
+  color: var(--color-muted);
+}
+
+.status-badge--connected {
+  background: color-mix(in srgb, var(--color-online) 15%, transparent);
+  color: var(--color-online);
 }
 
 .empty-state,

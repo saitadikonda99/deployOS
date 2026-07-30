@@ -1,18 +1,24 @@
 // Command deployos-server runs the DeployOS control plane: it loads
-// configuration, starts structured logging, and serves a health endpoint
-// until it receives a shutdown signal.
+// configuration, starts structured logging, and serves the device
+// registration API and a health endpoint until it receives a shutdown
+// signal.
 package main
 
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
+	"github.com/jackc/pgx/v5/pgxpool"
+
+	"github.com/saitadikonda99/deployOS/internal/auth"
 	"github.com/saitadikonda99/deployOS/internal/config"
+	"github.com/saitadikonda99/deployOS/internal/devices"
 	"github.com/saitadikonda99/deployOS/internal/logging"
 	"github.com/saitadikonda99/deployOS/internal/monitoring"
 	"github.com/saitadikonda99/deployOS/internal/runtime"
@@ -37,10 +43,29 @@ func run() error {
 
 	logger := logging.New(cfg.LogLevel)
 
+	if err := validateConfig(cfg); err != nil {
+		return err
+	}
+
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	pool, err := pgxpool.New(ctx, cfg.Supabase.DatabaseURL)
+	if err != nil {
+		return fmt.Errorf("connecting to database: %w", err)
+	}
+	defer pool.Close()
+
 	registry := monitoring.NewRegistry()
+	registry.Register("database", func(ctx context.Context) error {
+		return pool.Ping(ctx)
+	})
+
+	authenticator := auth.NewSupabaseAuthenticator(cfg.Supabase.URL, cfg.Supabase.AnonKey)
+	deviceRepo := devices.NewPostgresRepository(pool)
+	tokenIssuer := devices.NewJWTTokenIssuer(cfg.DeviceToken.Secret, cfg.DeviceToken.TTL)
+	deviceService := devices.NewService(deviceRepo, tokenIssuer, logger)
+	deviceHandler := devices.NewHandler(deviceService, authenticator, logger)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", registry.Handler())
@@ -51,6 +76,8 @@ func run() error {
 			Version: version,
 		})
 	})
+	mux.HandleFunc("POST /api/v1/devices/register", deviceHandler.Register)
+	mux.HandleFunc("GET /api/v1/devices", deviceHandler.List)
 
 	handler := logging.Middleware(logger)(mux)
 	server := runtime.NewHTTPServer(cfg.Server.HTTPAddr, handler, logger)
@@ -62,5 +89,19 @@ func run() error {
 	}
 
 	logger.Info("deployos-server stopped")
+	return nil
+}
+
+func validateConfig(cfg *config.Config) error {
+	switch {
+	case cfg.Supabase.DatabaseURL == "":
+		return fmt.Errorf("DEPLOYOS_SUPABASE_DATABASE_URL is required")
+	case cfg.Supabase.URL == "":
+		return fmt.Errorf("DEPLOYOS_SUPABASE_URL is required")
+	case cfg.Supabase.AnonKey == "":
+		return fmt.Errorf("DEPLOYOS_SUPABASE_ANON_KEY is required")
+	case cfg.DeviceToken.Secret == "":
+		return fmt.Errorf("DEPLOYOS_DEVICE_TOKEN_SECRET is required")
+	}
 	return nil
 }

@@ -13,7 +13,6 @@ import (
 	"github.com/saitadikonda99/deployOS/internal/agent"
 	"github.com/saitadikonda99/deployOS/internal/config"
 	"github.com/saitadikonda99/deployOS/internal/logging"
-	"github.com/saitadikonda99/deployOS/pkg/types"
 )
 
 // version is set at build time via -ldflags "-X main.version=...".
@@ -39,8 +38,10 @@ func run() error {
 	defer stop()
 
 	a := agent.New(agent.Config{
-		ID:       types.AgentID(cfg.Agent.ID),
-		HTTPAddr: cfg.Agent.HTTPAddr,
+		HTTPAddr:        cfg.Agent.HTTPAddr,
+		DataDir:         cfg.Agent.DataDir,
+		APIBaseURL:      cfg.Agent.APIBaseURL,
+		UserAccessToken: cfg.Agent.UserAccessToken,
 	}, logger)
 
 	logger.Info("starting deployos-agent", slog.String("version", version))

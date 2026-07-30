@@ -1,13 +1,30 @@
 # Copy to config.yaml and adjust as needed. Every key is optional; the
-# values below are the built-in defaults. Environment variables (see
-# .env.example) take precedence over this file.
+# values below are the built-in defaults except where noted. Environment
+# variables (see .env.example) take precedence over this file. See
+# docs/device-registration.md for how these settings fit together.
 
 environment: development
 log_level: info
 
 agent:
-  id: ""
   http_addr: ":8081"
+  # Defaults to "<home>/.deployos" if left empty.
+  data_dir: ""
+  api_base_url: "http://localhost:8080"
+  # The operator's Supabase user access token. Obtained out-of-band
+  # until a proper login flow exists - see docs/device-registration.md.
+  user_access_token: ""
 
 server:
   http_addr: ":8080"
+
+# Required by cmd/server only; the agent never reads these.
+supabase:
+  url: ""
+  anon_key: ""
+  database_url: ""
+
+device_token:
+  # Required in production - generate with e.g. `openssl rand -hex 32`.
+  secret: ""
+  ttl: "8760h"

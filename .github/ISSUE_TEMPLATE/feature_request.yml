@@ -1,0 +1,49 @@
+name: Feature request
+description: Suggest an idea or capability for DeployOS
+labels: ["type: feature", "status: needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the suggestion. Please check the
+        [roadmap in the README](https://github.com/saitadikonda99/deployOS#roadmap)
+        and existing issues first.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Describe the problem or limitation you're running into.
+    validations:
+      required: true
+
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: What would you like to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+    validations:
+      required: false
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: Component
+      options:
+        - apps/dashboard
+        - apps/control-plane
+        - crates/agent
+        - crates/protocol
+        - crates/common
+        - tooling / CI
+        - documentation
+        - new component
+    validations:
+      required: true

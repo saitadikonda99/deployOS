@@ -1,0 +1,42 @@
+{
+  "name": "deployos",
+  "private": true,
+  "version": "0.0.0",
+  "description": "DeployOS - an open-source personal cloud operating system",
+  "license": "Apache-2.0",
+  "packageManager": "pnpm@11.18.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "lint:fix": "turbo run lint -- --write",
+    "format": "biome format --write . && prettier --write \"**/*.{md,mdx,yml,yaml}\" --ignore-unknown",
+    "format:check": "biome format . && prettier --check \"**/*.{md,mdx,yml,yaml}\" --ignore-unknown",
+    "check": "biome check .",
+    "check:fix": "biome check --write .",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "clean": "turbo run clean && rm -rf node_modules",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "turbo run build && changeset publish",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@changesets/cli": "^2.27.11",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.3.0",
+    "prettier": "^3.4.2",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx,json,jsonc}": ["biome check --write --no-errors-on-unmatched"],
+    "*.{md,mdx,yml,yaml}": ["prettier --write"]
+  }
+}

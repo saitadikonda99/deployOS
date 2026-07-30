@@ -1,0 +1,16 @@
+[package]
+name = "deployos-agent"
+description = "Node agent that runs on each machine participating in a DeployOS fleet"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "deployos-agent"
+path = "src/main.rs"
+
+[dependencies]
+deployos-common.workspace = true
+deployos-protocol.workspace = true

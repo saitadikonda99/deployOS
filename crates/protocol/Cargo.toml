@@ -1,0 +1,12 @@
+[package]
+name = "deployos-protocol"
+description = "Wire types shared between the DeployOS control plane and node agents"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true

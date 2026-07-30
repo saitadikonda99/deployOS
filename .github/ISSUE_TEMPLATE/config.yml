@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/saitadikonda99/deployOS/security/advisories/new
+    about: Please report security vulnerabilities privately, not as a public issue.
+  - name: Questions & discussion
+    url: https://github.com/saitadikonda99/deployOS/discussions
+    about: Ask questions or discuss ideas that aren't a bug or feature request yet.

@@ -1,0 +1,61 @@
+# Label definitions, synced to the repo by .github/workflows/labels.yml
+# using https://github.com/crazy-max/ghaction-github-labeler
+
+# Type
+- name: "type: bug"
+  color: "d73a4a"
+  description: Something isn't working
+- name: "type: feature"
+  color: "a2eeef"
+  description: New feature or request
+- name: "type: docs"
+  color: "0075ca"
+  description: Documentation only
+- name: "type: chore"
+  color: "cfd3d7"
+  description: Tooling, dependencies, or maintenance
+
+# Status
+- name: "status: needs-triage"
+  color: "ededed"
+  description: Not yet reviewed by a maintainer
+- name: "status: confirmed"
+  color: "0e8a16"
+  description: Reproduced / accepted
+- name: "status: blocked"
+  color: "b60205"
+  description: Blocked on something else
+- name: "status: in-progress"
+  color: "fbca04"
+  description: Actively being worked on
+
+# Area
+- name: "area: dashboard"
+  color: "5319e7"
+  description: apps/dashboard
+- name: "area: control-plane"
+  color: "5319e7"
+  description: apps/control-plane
+- name: "area: agent"
+  color: "5319e7"
+  description: crates/agent
+- name: "area: protocol"
+  color: "5319e7"
+  description: crates/protocol
+- name: "area: tooling"
+  color: "5319e7"
+  description: Build tooling, CI, linting
+
+# Meta
+- name: "good first issue"
+  color: "7057ff"
+  description: Good for newcomers
+- name: "help wanted"
+  color: "008672"
+  description: Extra attention is needed
+- name: "security"
+  color: "b60205"
+  description: Security-related
+- name: "dependencies"
+  color: "0366d6"
+  description: Dependency updates (used by Dependabot)

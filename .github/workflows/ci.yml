@@ -70,3 +70,36 @@ jobs:
 
       - name: Test
         run: go test ./...
+
+  proto:
+    name: Proto - lint, generate (drift check)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          check-latest: true
+          cache: true
+
+      - uses: bufbuild/buf-setup-action@v1
+        with:
+          version: latest
+
+      - name: Install protoc-gen-go and protoc-gen-go-grpc
+        run: |
+          go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+          go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest
+          echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
+
+      - name: Lint
+        run: buf lint
+
+      - name: Generate and check for drift
+        run: |
+          buf generate
+          git diff --exit-code -- gen/ || {
+            echo "::error::Generated code in gen/ is out of date. Run 'buf generate' and commit the result."
+            exit 1
+          }

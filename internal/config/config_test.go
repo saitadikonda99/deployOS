@@ -33,6 +33,29 @@ func TestLoadDefaults(t *testing.T) {
 	if cfg.DeviceToken.TTL != 8760*time.Hour {
 		t.Errorf("DeviceToken.TTL = %v, want %v", cfg.DeviceToken.TTL, 8760*time.Hour)
 	}
+	if cfg.Agent.GRPCServerAddr != "localhost:9090" {
+		t.Errorf("Agent.GRPCServerAddr = %q, want %q", cfg.Agent.GRPCServerAddr, "localhost:9090")
+	}
+	if cfg.Server.GRPCAddr != ":9090" {
+		t.Errorf("Server.GRPCAddr = %q, want %q", cfg.Server.GRPCAddr, ":9090")
+	}
+}
+
+func TestLoadGRPCAddrsFromEnv(t *testing.T) {
+	t.Setenv("DEPLOYOS_AGENT_GRPC_SERVER_ADDR", "agent-facing:9999")
+	t.Setenv("DEPLOYOS_SERVER_GRPC_ADDR", ":9999")
+
+	cfg, err := Load(Options{})
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	if cfg.Agent.GRPCServerAddr != "agent-facing:9999" {
+		t.Errorf("Agent.GRPCServerAddr = %q, want %q", cfg.Agent.GRPCServerAddr, "agent-facing:9999")
+	}
+	if cfg.Server.GRPCAddr != ":9999" {
+		t.Errorf("Server.GRPCAddr = %q, want %q", cfg.Server.GRPCAddr, ":9999")
+	}
 }
 
 func TestLoadAgentDataDirOverride(t *testing.T) {

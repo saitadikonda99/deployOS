@@ -41,6 +41,7 @@ func run() error {
 		HTTPAddr:        cfg.Agent.HTTPAddr,
 		DataDir:         cfg.Agent.DataDir,
 		APIBaseURL:      cfg.Agent.APIBaseURL,
+		GRPCServerAddr:  cfg.Agent.GRPCServerAddr,
 		UserAccessToken: cfg.Agent.UserAccessToken,
 	}, logger)
 

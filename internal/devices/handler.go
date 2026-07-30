@@ -9,19 +9,44 @@ import (
 	"github.com/saitadikonda99/deployOS/internal/auth"
 	"github.com/saitadikonda99/deployOS/pkg/api"
 	"github.com/saitadikonda99/deployOS/pkg/protocol"
+	"github.com/saitadikonda99/deployOS/pkg/types"
 )
+
+// connectionStatusOnline and connectionStatusOffline are the values
+// exposed as api.Device.Status - live connection state, sourced from
+// ConnectionStatusProvider, not the device's persisted registration
+// status.
+const (
+	connectionStatusOnline  = "connected"
+	connectionStatusOffline = "disconnected"
+)
+
+// ConnectionStatusProvider reports whether a device currently holds an
+// active gRPC connection to the control plane. internal/connection.Manager
+// implements this; Handler depends only on this interface so it doesn't
+// need to import internal/connection.
+type ConnectionStatusProvider interface {
+	IsConnected(deviceID types.AgentID) bool
+}
 
 // Handler adapts Service to HTTP: parsing requests, authenticating
 // callers, and translating Service errors into status codes.
 type Handler struct {
 	service       *Service
 	authenticator auth.Authenticator
+	connections   ConnectionStatusProvider
 	logger        *slog.Logger
 }
 
-// NewHandler builds a Handler.
-func NewHandler(service *Service, authenticator auth.Authenticator, logger *slog.Logger) *Handler {
-	return &Handler{service: service, authenticator: authenticator, logger: logger}
+// NewHandler builds a Handler. connections reports live connection state
+// for GET /api/v1/devices; see ConnectionStatusProvider.
+func NewHandler(
+	service *Service,
+	authenticator auth.Authenticator,
+	connections ConnectionStatusProvider,
+	logger *slog.Logger,
+) *Handler {
+	return &Handler{service: service, authenticator: authenticator, connections: connections, logger: logger}
 }
 
 // Register handles POST /api/v1/devices/register.
@@ -73,12 +98,17 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 
 	resp := api.ListDevicesResponse{Devices: make([]api.Device, 0, len(deviceList))}
 	for _, d := range deviceList {
+		status := connectionStatusOffline
+		if h.connections.IsConnected(d.ID) {
+			status = connectionStatusOnline
+		}
+
 		resp.Devices = append(resp.Devices, api.Device{
 			ID:              d.ID.String(),
 			Hostname:        d.Hostname,
 			OperatingSystem: d.OperatingSystem,
 			Architecture:    d.Architecture,
-			Status:          d.Status,
+			Status:          status,
 			CreatedAt:       d.CreatedAt,
 		})
 	}

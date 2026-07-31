@@ -3,7 +3,8 @@ package api
 // SendCommandRequest is the JSON body for
 // POST /api/v1/devices/{deviceID}/commands.
 type SendCommandRequest struct {
-	Kind string `json:"kind"`
+	Kind      string            `json:"kind"`
+	Arguments map[string]string `json:"arguments,omitempty"`
 }
 
 // SendCommandResponse is a command's structured result, returned once

@@ -17,6 +17,9 @@ agent:
   # The operator's Supabase user access token. Obtained out-of-band
   # until a proper login flow exists - see docs/device-registration.md.
   user_access_token: ""
+  # Path to the Docker daemon's unix socket, used by the
+  # LIST_CONTAINERS/INSPECT_CONTAINER commands - see docs/runtime.md.
+  docker_socket: "/var/run/docker.sock"
 
 server:
   http_addr: ":8080"

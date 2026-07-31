@@ -19,6 +19,7 @@ import (
 
 	"github.com/saitadikonda99/deployOS/internal/commandbus"
 	"github.com/saitadikonda99/deployOS/internal/connection"
+	"github.com/saitadikonda99/deployOS/internal/containers/docker"
 	"github.com/saitadikonda99/deployOS/internal/logging"
 	"github.com/saitadikonda99/deployOS/internal/monitoring"
 	"github.com/saitadikonda99/deployOS/internal/runtime"
@@ -52,6 +53,10 @@ type Config struct {
 	// the operator's Supabase user access token, obtained out-of-band
 	// until a proper login flow exists.
 	UserAccessToken string
+	// DockerSocket is the path to the Docker daemon's unix socket, used
+	// by the LIST_CONTAINERS/INSPECT_CONTAINER commands (see
+	// docs/runtime.md).
+	DockerSocket string
 }
 
 // Agent is a running DeployOS node agent.
@@ -74,7 +79,7 @@ func New(cfg Config, logger *slog.Logger) *Agent {
 		registry:   monitoring.NewRegistry(),
 		registrar:  newRegistrar(cfg.APIBaseURL),
 		conn:       connection.NewClient(cfg.GRPCServerAddr, logger),
-		dispatcher: newDispatcher(logger),
+		dispatcher: newDispatcher(logger, docker.NewRuntime(cfg.DockerSocket)),
 	}
 }
 

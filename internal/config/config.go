@@ -49,6 +49,10 @@ type AgentConfig struct {
 	// used to authenticate device registration requests. Obtained
 	// out-of-band until a proper login flow exists.
 	UserAccessToken string `mapstructure:"user_access_token"`
+	// DockerSocket is the path to the Docker daemon's unix socket, used
+	// to observe containers via LIST_CONTAINERS/INSPECT_CONTAINER (see
+	// docs/runtime.md). Defaults to "/var/run/docker.sock".
+	DockerSocket string `mapstructure:"docker_socket"`
 }
 
 // ServerConfig configures the DeployOS control plane (cmd/server).
@@ -161,6 +165,7 @@ func setDefaults(v *viper.Viper) {
 	// keys even with AutomaticEnv enabled.
 	v.SetDefault("agent.data_dir", "")
 	v.SetDefault("agent.user_access_token", "")
+	v.SetDefault("agent.docker_socket", "/var/run/docker.sock")
 
 	v.SetDefault("server.http_addr", ":8080")
 	v.SetDefault("server.grpc_addr", ":9090")

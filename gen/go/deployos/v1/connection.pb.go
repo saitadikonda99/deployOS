@@ -150,12 +150,18 @@ func (x *AuthenticateResponse) GetError() string {
 // stream. New message kinds are added as new oneof fields, so existing
 // clients that don't recognize a kind simply never construct or expect
 // it - the stream itself never has to change shape to add capabilities.
+// The Command Bus (see docs/command-bus.md) is the first feature to add
+// cases beyond authentication: command_request flows control-plane ->
+// agent, command_response flows agent -> control-plane, both over this
+// same stream rather than a separate RPC.
 type ConnectionEnvelope struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// Types that are valid to be assigned to Payload:
 	//
 	//	*ConnectionEnvelope_AuthenticateRequest
 	//	*ConnectionEnvelope_AuthenticateResponse
+	//	*ConnectionEnvelope_CommandRequest
+	//	*ConnectionEnvelope_CommandResponse
 	Payload       isConnectionEnvelope_Payload `protobuf_oneof:"payload"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -216,6 +222,24 @@ func (x *ConnectionEnvelope) GetAuthenticateResponse() *AuthenticateResponse {
 	return nil
 }
 
+func (x *ConnectionEnvelope) GetCommandRequest() *Command {
+	if x != nil {
+		if x, ok := x.Payload.(*ConnectionEnvelope_CommandRequest); ok {
+			return x.CommandRequest
+		}
+	}
+	return nil
+}
+
+func (x *ConnectionEnvelope) GetCommandResponse() *CommandResult {
+	if x != nil {
+		if x, ok := x.Payload.(*ConnectionEnvelope_CommandResponse); ok {
+			return x.CommandResponse
+		}
+	}
+	return nil
+}
+
 type isConnectionEnvelope_Payload interface {
 	isConnectionEnvelope_Payload()
 }
@@ -228,15 +252,27 @@ type ConnectionEnvelope_AuthenticateResponse struct {
 	AuthenticateResponse *AuthenticateResponse `protobuf:"bytes,2,opt,name=authenticate_response,json=authenticateResponse,proto3,oneof"`
 }
 
+type ConnectionEnvelope_CommandRequest struct {
+	CommandRequest *Command `protobuf:"bytes,3,opt,name=command_request,json=commandRequest,proto3,oneof"`
+}
+
+type ConnectionEnvelope_CommandResponse struct {
+	CommandResponse *CommandResult `protobuf:"bytes,4,opt,name=command_response,json=commandResponse,proto3,oneof"`
+}
+
 func (*ConnectionEnvelope_AuthenticateRequest) isConnectionEnvelope_Payload() {}
 
 func (*ConnectionEnvelope_AuthenticateResponse) isConnectionEnvelope_Payload() {}
+
+func (*ConnectionEnvelope_CommandRequest) isConnectionEnvelope_Payload() {}
+
+func (*ConnectionEnvelope_CommandResponse) isConnectionEnvelope_Payload() {}
 
 var File_deployos_v1_connection_proto protoreflect.FileDescriptor
 
 const file_deployos_v1_connection_proto_rawDesc = "" +
 	"\n" +
-	"\x1cdeployos/v1/connection.proto\x12\vdeployos.v1\x1a\x18deployos/v1/common.proto\"\x81\x01\n" +
+	"\x1cdeployos/v1/connection.proto\x12\vdeployos.v1\x1a\x19deployos/v1/command.proto\x1a\x18deployos/v1/common.proto\"\x81\x01\n" +
 	"\x13AuthenticateRequest\x127\n" +
 	"\n" +
 	"connection\x18\x01 \x01(\v2\x17.deployos.v1.ConnectionR\n" +
@@ -246,11 +282,13 @@ const file_deployos_v1_connection_proto_rawDesc = "" +
 	"\rauthenticated\x18\x01 \x01(\bR\rauthenticated\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x02 \x01(\tR\tsessionId\x12\x14\n" +
-	"\x05error\x18\x03 \x01(\tR\x05errorJ\x04\b\x04\x10\x06\"\xd6\x01\n" +
+	"\x05error\x18\x03 \x01(\tR\x05errorJ\x04\b\x04\x10\x06\"\xe0\x02\n" +
 	"\x12ConnectionEnvelope\x12U\n" +
 	"\x14authenticate_request\x18\x01 \x01(\v2 .deployos.v1.AuthenticateRequestH\x00R\x13authenticateRequest\x12X\n" +
-	"\x15authenticate_response\x18\x02 \x01(\v2!.deployos.v1.AuthenticateResponseH\x00R\x14authenticateResponseB\t\n" +
-	"\apayloadJ\x04\b\x03\x10\v2d\n" +
+	"\x15authenticate_response\x18\x02 \x01(\v2!.deployos.v1.AuthenticateResponseH\x00R\x14authenticateResponse\x12?\n" +
+	"\x0fcommand_request\x18\x03 \x01(\v2\x14.deployos.v1.CommandH\x00R\x0ecommandRequest\x12G\n" +
+	"\x10command_response\x18\x04 \x01(\v2\x1a.deployos.v1.CommandResultH\x00R\x0fcommandResponseB\t\n" +
+	"\apayloadJ\x04\b\x05\x10\v2d\n" +
 	"\x11ConnectionService\x12O\n" +
 	"\aConnect\x12\x1f.deployos.v1.ConnectionEnvelope\x1a\x1f.deployos.v1.ConnectionEnvelope(\x010\x01BBZ@github.com/saitadikonda99/deployOS/gen/go/deployos/v1;deployosv1b\x06proto3"
 
@@ -273,19 +311,23 @@ var file_deployos_v1_connection_proto_goTypes = []any{
 	(*ConnectionEnvelope)(nil),   // 2: deployos.v1.ConnectionEnvelope
 	(*Connection)(nil),           // 3: deployos.v1.Connection
 	(*Device)(nil),               // 4: deployos.v1.Device
+	(*Command)(nil),              // 5: deployos.v1.Command
+	(*CommandResult)(nil),        // 6: deployos.v1.CommandResult
 }
 var file_deployos_v1_connection_proto_depIdxs = []int32{
 	3, // 0: deployos.v1.AuthenticateRequest.connection:type_name -> deployos.v1.Connection
 	4, // 1: deployos.v1.AuthenticateRequest.device:type_name -> deployos.v1.Device
 	0, // 2: deployos.v1.ConnectionEnvelope.authenticate_request:type_name -> deployos.v1.AuthenticateRequest
 	1, // 3: deployos.v1.ConnectionEnvelope.authenticate_response:type_name -> deployos.v1.AuthenticateResponse
-	2, // 4: deployos.v1.ConnectionService.Connect:input_type -> deployos.v1.ConnectionEnvelope
-	2, // 5: deployos.v1.ConnectionService.Connect:output_type -> deployos.v1.ConnectionEnvelope
-	5, // [5:6] is the sub-list for method output_type
-	4, // [4:5] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	5, // 4: deployos.v1.ConnectionEnvelope.command_request:type_name -> deployos.v1.Command
+	6, // 5: deployos.v1.ConnectionEnvelope.command_response:type_name -> deployos.v1.CommandResult
+	2, // 6: deployos.v1.ConnectionService.Connect:input_type -> deployos.v1.ConnectionEnvelope
+	2, // 7: deployos.v1.ConnectionService.Connect:output_type -> deployos.v1.ConnectionEnvelope
+	7, // [7:8] is the sub-list for method output_type
+	6, // [6:7] is the sub-list for method input_type
+	6, // [6:6] is the sub-list for extension type_name
+	6, // [6:6] is the sub-list for extension extendee
+	0, // [0:6] is the sub-list for field type_name
 }
 
 func init() { file_deployos_v1_connection_proto_init() }
@@ -293,10 +335,13 @@ func file_deployos_v1_connection_proto_init() {
 	if File_deployos_v1_connection_proto != nil {
 		return
 	}
+	file_deployos_v1_command_proto_init()
 	file_deployos_v1_common_proto_init()
 	file_deployos_v1_connection_proto_msgTypes[2].OneofWrappers = []any{
 		(*ConnectionEnvelope_AuthenticateRequest)(nil),
 		(*ConnectionEnvelope_AuthenticateResponse)(nil),
+		(*ConnectionEnvelope_CommandRequest)(nil),
+		(*ConnectionEnvelope_CommandResponse)(nil),
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{

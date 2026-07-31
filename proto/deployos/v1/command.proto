@@ -1,6 +1,14 @@
-// CommandService: how the control plane will deliver commands to an
-// agent and receive their results. Nothing executes a command yet -
-// this file defines the contract only.
+// Command and CommandResult: the messages the Command Bus (see
+// docs/command-bus.md) sends over ConnectionService's existing stream
+// (see connection.proto's ConnectionEnvelope) to route a request to an
+// agent and correlate its response.
+//
+// There is deliberately no CommandService/RPC here. A standalone unary
+// RPC would have to be initiated by whichever side is the gRPC client -
+// but the agent is always the client (it dials out; the control plane
+// never dials in, since agents are commonly behind NAT). Command
+// delivery has to ride the connection the agent already opened, which
+// is exactly what ConnectionEnvelope's oneof is for.
 syntax = "proto3";
 
 package deployos.v1;
@@ -32,29 +40,4 @@ message CommandResult {
   Metadata details = 4;
 
   reserved 5 to 10;
-}
-
-// DeliverRequest wraps the Command being sent. It's a distinct type
-// from Command itself so this RPC's request shape can evolve (e.g. to
-// add delivery options) independently of the reusable Command message.
-message DeliverRequest {
-  Command command = 1;
-
-  reserved 2 to 3;
-}
-
-// DeliverResponse wraps the resulting CommandResult, for the same
-// reason DeliverRequest wraps Command.
-message DeliverResponse {
-  CommandResult result = 1;
-
-  reserved 2 to 3;
-}
-
-// CommandService will let the control plane deliver commands to an
-// agent and collect their results. No delivery mechanism, retry policy,
-// or execution logic exists yet.
-service CommandService {
-  // Deliver sends a single command and waits for its result.
-  rpc Deliver(DeliverRequest) returns (DeliverResponse);
 }

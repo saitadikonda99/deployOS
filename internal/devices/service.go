@@ -133,3 +133,20 @@ func (s *Service) List(ctx context.Context, userID string) ([]Device, error) {
 	}
 	return devices, nil
 }
+
+// IsOwner reports whether deviceID belongs to userID. It satisfies
+// internal/commandbus.OwnershipChecker, which the Command Bus's HTTP
+// handler uses to make sure an operator can only send commands to their
+// own devices.
+func (s *Service) IsOwner(ctx context.Context, userID string, deviceID types.AgentID) (bool, error) {
+	devices, err := s.List(ctx, userID)
+	if err != nil {
+		return false, err
+	}
+	for _, d := range devices {
+		if d.ID == deviceID {
+			return true, nil
+		}
+	}
+	return false, nil
+}

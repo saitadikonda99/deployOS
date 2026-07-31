@@ -194,3 +194,37 @@ func TestServiceList(t *testing.T) {
 		t.Fatalf("List() for unrelated user returned %d devices, want 0", len(got))
 	}
 }
+
+func TestServiceIsOwner(t *testing.T) {
+	repo := newFakeRepository()
+	svc := NewService(repo, &fakeTokenIssuer{token: "t"}, testLogger())
+
+	in := validInput()
+	if _, err := svc.Register(context.Background(), "user-1", in); err != nil {
+		t.Fatalf("Register() error = %v", err)
+	}
+
+	owned, err := svc.IsOwner(context.Background(), "user-1", in.DeviceID)
+	if err != nil {
+		t.Fatalf("IsOwner() error = %v", err)
+	}
+	if !owned {
+		t.Error("IsOwner() = false, want true for the registering user")
+	}
+
+	owned, err = svc.IsOwner(context.Background(), "user-2", in.DeviceID)
+	if err != nil {
+		t.Fatalf("IsOwner() error = %v", err)
+	}
+	if owned {
+		t.Error("IsOwner() = true, want false for an unrelated user")
+	}
+
+	owned, err = svc.IsOwner(context.Background(), "user-1", types.AgentID("99999999-9999-9999-9999-999999999999"))
+	if err != nil {
+		t.Fatalf("IsOwner() error = %v", err)
+	}
+	if owned {
+		t.Error("IsOwner() = true, want false for a device that doesn't exist")
+	}
+}

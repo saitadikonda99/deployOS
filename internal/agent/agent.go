@@ -17,6 +17,7 @@ import (
 
 	"golang.org/x/sync/errgroup"
 
+	"github.com/saitadikonda99/deployOS/internal/commandbus"
 	"github.com/saitadikonda99/deployOS/internal/connection"
 	"github.com/saitadikonda99/deployOS/internal/logging"
 	"github.com/saitadikonda99/deployOS/internal/monitoring"
@@ -55,11 +56,12 @@ type Config struct {
 
 // Agent is a running DeployOS node agent.
 type Agent struct {
-	cfg       Config
-	logger    *slog.Logger
-	registry  *monitoring.Registry
-	registrar *registrar
-	conn      *connection.Client
+	cfg        Config
+	logger     *slog.Logger
+	registry   *monitoring.Registry
+	registrar  *registrar
+	conn       *connection.Client
+	dispatcher *commandbus.Dispatcher
 }
 
 // New constructs an Agent. It does not start any network listeners,
@@ -67,11 +69,12 @@ type Agent struct {
 // that.
 func New(cfg Config, logger *slog.Logger) *Agent {
 	return &Agent{
-		cfg:       cfg,
-		logger:    logger,
-		registry:  monitoring.NewRegistry(),
-		registrar: newRegistrar(cfg.APIBaseURL),
-		conn:      connection.NewClient(cfg.GRPCServerAddr, logger),
+		cfg:        cfg,
+		logger:     logger,
+		registry:   monitoring.NewRegistry(),
+		registrar:  newRegistrar(cfg.APIBaseURL),
+		conn:       connection.NewClient(cfg.GRPCServerAddr, logger),
+		dispatcher: newDispatcher(logger),
 	}
 }
 
@@ -97,6 +100,7 @@ func (a *Agent) Run(ctx context.Context) error {
 	}
 
 	a.registerWithControlPlane(ctx, deviceID, info)
+	a.conn.OnCommand(commandbus.WireHandler(a.dispatcher))
 
 	a.registry.Register("control_plane_connection", func(context.Context) error {
 		if !a.conn.Connected() {

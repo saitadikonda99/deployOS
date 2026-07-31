@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"math/rand/v2"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -16,6 +17,12 @@ import (
 	deployosv1 "github.com/saitadikonda99/deployOS/gen/go/deployos/v1"
 	"github.com/saitadikonda99/deployOS/pkg/types"
 )
+
+// CommandHandler processes a Command received from the control plane
+// and produces the CommandResult to send back. It's called once per
+// received command, concurrently with any others in flight, so it must
+// be safe for concurrent use.
+type CommandHandler func(ctx context.Context, cmd *deployosv1.Command) *deployosv1.CommandResult
 
 // DefaultInitialBackoff and DefaultMaxBackoff bound Client's reconnect
 // delay: it starts at DefaultInitialBackoff and doubles (with jitter) up
@@ -53,6 +60,8 @@ type Client struct {
 	initialBackoff time.Duration
 	maxBackoff     time.Duration
 
+	onCommand CommandHandler
+
 	connected atomic.Bool
 }
 
@@ -70,6 +79,13 @@ func NewClient(serverAddr string, logger *slog.Logger) *Client {
 // connection to the control plane.
 func (c *Client) Connected() bool {
 	return c.connected.Load()
+}
+
+// OnCommand registers the handler invoked whenever the control plane
+// sends a command over the connection. Register it before calling Run -
+// it isn't safe to change concurrently with an active connection.
+func (c *Client) OnCommand(handler CommandHandler) {
+	c.onCommand = handler
 }
 
 // Run dials the control plane and authenticates as device, then blocks,
@@ -171,13 +187,45 @@ func (c *Client) connectOnce(ctx context.Context, device DeviceInfo, token Token
 	c.connected.Store(true)
 	c.logger.Info("connected to control plane", slog.String("session_id", resp.GetSessionId()))
 
+	var sendMu sync.Mutex
+	send := func(env *deployosv1.ConnectionEnvelope) error {
+		sendMu.Lock()
+		defer sendMu.Unlock()
+		return stream.Send(env)
+	}
+
+	// Command handlers run in their own goroutines so a slow one can't
+	// block the read loop (or other commands) from making progress -
+	// this is what lets multiple commands execute concurrently. wg
+	// ensures they've all finished (or at least stopped touching stream)
+	// before connectOnce returns.
+	var wg sync.WaitGroup
+	defer wg.Wait()
+
 	for {
-		if _, err := stream.Recv(); err != nil {
+		envelope, err := stream.Recv()
+		if err != nil {
 			if errors.Is(err, io.EOF) {
 				return true, nil
 			}
 			return true, err
 		}
+
+		cmd := envelope.GetCommandRequest()
+		if cmd == nil || c.onCommand == nil {
+			continue
+		}
+
+		wg.Add(1)
+		go func(cmd *deployosv1.Command) {
+			defer wg.Done()
+			result := c.onCommand(ctx, cmd)
+			if err := send(&deployosv1.ConnectionEnvelope{
+				Payload: &deployosv1.ConnectionEnvelope_CommandResponse{CommandResponse: result},
+			}); err != nil {
+				c.logger.Error("sending command result", slog.String("command_id", cmd.GetId()), slog.Any("error", err))
+			}
+		}(cmd)
 	}
 }
 

@@ -11,6 +11,8 @@ This directory holds documentation that goes deeper than the top-level
   design for future agent <-> control-plane communication.
 - [`connection.md`](./connection.md) - the persistent authenticated gRPC
   connection between agent and control plane.
+- [`command-bus.md`](./command-bus.md) - request/response command
+  routing between the control plane and an agent.
 
 As DeployOS grows, add one document per subsystem here (deployments,
 networking/HTTPS, secrets, databases, monitoring, backups, clustering) rather

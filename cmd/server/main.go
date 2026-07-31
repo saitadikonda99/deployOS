@@ -20,6 +20,7 @@ import (
 
 	deployosv1 "github.com/saitadikonda99/deployOS/gen/go/deployos/v1"
 	"github.com/saitadikonda99/deployOS/internal/auth"
+	"github.com/saitadikonda99/deployOS/internal/commandbus"
 	"github.com/saitadikonda99/deployOS/internal/config"
 	"github.com/saitadikonda99/deployOS/internal/connection"
 	"github.com/saitadikonda99/deployOS/internal/devices"
@@ -73,6 +74,15 @@ func run() error {
 	connManager := connection.NewManager()
 	deviceHandler := devices.NewHandler(deviceService, authenticator, connManager, logger)
 
+	grpcServer := grpc.NewServer()
+	connServer := connection.NewServer(connManager, tokenIssuer, logger)
+	deployosv1.RegisterConnectionServiceServer(grpcServer, connServer)
+	grpcRuntime := runtime.NewGRPCServer(cfg.Server.GRPCAddr, grpcServer, logger)
+
+	commandService := commandbus.NewService(connServer, logger)
+	connServer.OnMessage(commandService.HandleResult)
+	commandHandler := commandbus.NewHandler(commandService, authenticator, deviceService, logger)
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", registry.Handler())
 	mux.HandleFunc("GET /version", func(w http.ResponseWriter, _ *http.Request) {
@@ -84,14 +94,10 @@ func run() error {
 	})
 	mux.HandleFunc("POST /api/v1/devices/register", deviceHandler.Register)
 	mux.HandleFunc("GET /api/v1/devices", deviceHandler.List)
+	mux.HandleFunc("POST /api/v1/devices/{deviceID}/commands", commandHandler.Send)
 
 	httpHandler := logging.Middleware(logger)(mux)
 	httpServer := runtime.NewHTTPServer(cfg.Server.HTTPAddr, httpHandler, logger)
-
-	grpcServer := grpc.NewServer()
-	connServer := connection.NewServer(connManager, tokenIssuer, logger)
-	deployosv1.RegisterConnectionServiceServer(grpcServer, connServer)
-	grpcRuntime := runtime.NewGRPCServer(cfg.Server.GRPCAddr, grpcServer, logger)
 
 	logger.Info("starting deployos-server", slog.String("version", version))
 

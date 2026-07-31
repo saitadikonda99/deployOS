@@ -6,6 +6,7 @@ syntax = "proto3";
 
 package deployos.v1;
 
+import "deployos/v1/command.proto";
 import "deployos/v1/common.proto";
 
 option go_package = "github.com/saitadikonda99/deployOS/gen/go/deployos/v1;deployosv1";
@@ -37,13 +38,19 @@ message AuthenticateResponse {
 // stream. New message kinds are added as new oneof fields, so existing
 // clients that don't recognize a kind simply never construct or expect
 // it - the stream itself never has to change shape to add capabilities.
+// The Command Bus (see docs/command-bus.md) is the first feature to add
+// cases beyond authentication: command_request flows control-plane ->
+// agent, command_response flows agent -> control-plane, both over this
+// same stream rather than a separate RPC.
 message ConnectionEnvelope {
   oneof payload {
     AuthenticateRequest authenticate_request = 1;
     AuthenticateResponse authenticate_response = 2;
+    Command command_request = 3;
+    CommandResult command_response = 4;
   }
 
-  reserved 3 to 10;
+  reserved 5 to 10;
 }
 
 // ConnectionService manages the persistent connection between an agent

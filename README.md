@@ -72,14 +72,16 @@ managed machine is Go.
 
 The **control plane** holds the source of truth for cluster state and is
 what the **dashboard** and every **agent** talk to. Each **agent** is a
-small Go binary that runs on every managed machine, reports health, and
-will execute instructions from the control plane. Registration and the
-dashboard's reads go over HTTP, with types defined once in `pkg/protocol`
-so the wire contract can't drift. Alongside that, every agent holds a
-persistent, authenticated gRPC connection to the control plane
-(`internal/connection`, protocol in `proto/`/`gen/`) - the transport
-future features (heartbeats, command delivery, metrics, log streaming)
-will ride on. See [`docs/connection.md`](./docs/connection.md) and
+small Go binary that runs on every managed machine and reports health.
+Registration and the dashboard's reads go over HTTP, with types defined
+once in `pkg/protocol` so the wire contract can't drift. Alongside that,
+every agent holds a persistent, authenticated gRPC connection to the
+control plane (`internal/connection`, protocol in `proto/`/`gen/`), which
+the Command Bus (`internal/commandbus`) uses to route request/response
+commands from the control plane to an agent and back - the transport
+future features (heartbeats, metrics, log streaming) will ride on the
+same connection. See [`docs/connection.md`](./docs/connection.md),
+[`docs/command-bus.md`](./docs/command-bus.md), and
 [`docs/protocol.md`](./docs/protocol.md). Operators also have a
 `deployos` CLI (`cmd/cli`) for local diagnostics and, eventually, fleet
 management. See [`docs/architecture.md`](./docs/architecture.md) for
@@ -99,6 +101,7 @@ deployos/
 │   ├── agent/           Agent process implementation (identity, registration, health)
 │   ├── auth/            Authenticates operators against Supabase Auth
 │   ├── config/          Configuration loading (env, .env, YAML)
+│   ├── commandbus/      Command Bus: request/response command routing over the connection
 │   ├── connection/      Persistent authenticated gRPC connection (client, server, Connection Manager)
 │   ├── devices/         Device registration (repository/service/handler)
 │   ├── docker/          Future container-lifecycle interface
@@ -181,24 +184,29 @@ DeployOS is being built in the open, in phases:
    [docs/device-registration.md](./docs/device-registration.md))_ —
    agents register themselves with the control plane and receive a
    signed device token.
-3. **Persistent connection** _(this repository, today - see
+3. **Persistent connection** _(done - see
    [docs/connection.md](./docs/connection.md))_ — agents hold a
    persistent, authenticated gRPC connection to the control plane, with
    automatic reconnection.
-4. **Deploy from Git** — build and run an application from a repository on
+4. **Command Bus** _(this repository, today - see
+   [docs/command-bus.md](./docs/command-bus.md))_ — generic
+   request/response command routing between the control plane and an
+   agent, over the persistent connection; `PING`/`GET_VERSION`/`GET_INFO`
+   are its only commands so far.
+5. **Deploy from Git** — build and run an application from a repository on
    a single node.
-5. **Automatic HTTPS** — certificate issuance and renewal with zero
+6. **Automatic HTTPS** — certificate issuance and renewal with zero
    configuration.
-6. **Docker management** — container lifecycle as a managed platform
+7. **Docker management** — container lifecycle as a managed platform
    primitive, not a manual `docker` invocation.
-7. **Secrets** — first-class secret storage and injection for deployed
+8. **Secrets** — first-class secret storage and injection for deployed
    applications.
-8. **Databases** — managed database provisioning and lifecycle.
-9. **Monitoring** — metrics, logs, and alerting out of the box.
-10. **Backups** — automated, verifiable backup and restore.
-11. **AI-powered operations** — assisted diagnosis, remediation suggestions,
+9. **Databases** — managed database provisioning and lifecycle.
+10. **Monitoring** — metrics, logs, and alerting out of the box.
+11. **Backups** — automated, verifiable backup and restore.
+12. **AI-powered operations** — assisted diagnosis, remediation suggestions,
     and operational summaries.
-12. **Multi-device fleets** — multiple machines operated as a single
+13. **Multi-device fleets** — multiple machines operated as a single
     logical cloud.
 
 Each phase ships as working software behind the same standards described

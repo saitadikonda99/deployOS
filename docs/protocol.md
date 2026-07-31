@@ -2,10 +2,8 @@
 
 DeployOS defines its agent <-> control-plane protocol in
 [Protocol Buffers](https://protobuf.dev/), under [`proto/`](../proto). This
-document explains why, how it's versioned, and how to work with it. It is
-API design only: nothing in this repository implements a gRPC server or
-client against this protocol yet - see
-[Status](#status) below.
+document explains why, how it's versioned, and how to work with it - see
+[Status](#status) below for what's actually implemented against it today.
 
 ## Why gRPC
 
@@ -53,8 +51,8 @@ proto/
 └── deployos/
     └── v1/
         ├── common.proto      Device, Connection, Status, Metadata
-        ├── connection.proto  ConnectionService (persistent stream + auth)
-        ├── command.proto     CommandService (future command delivery)
+        ├── connection.proto  ConnectionService (persistent stream + auth + command routing)
+        ├── command.proto     Command, CommandResult (see command-bus.md)
         └── agent.proto       AgentService (future agent operations)
 
 gen/
@@ -98,20 +96,27 @@ ways:
 
 ## Future protocol evolution
 
-None of the services in this package are implemented, by design (see
-[Status](#status)). As each feature lands, its RPCs are expected to gain
-real handlers without changing the shapes defined today:
+As each feature lands, it's expected to extend `ConnectionEnvelope`'s
+`oneof` rather than add a standalone RPC. This isn't just a style
+preference: a standalone unary RPC has to be initiated by whichever side
+holds the gRPC _client_, and in DeployOS that's always the agent (it
+dials the control plane; the control plane never dials an agent, since
+agents are commonly behind NAT). `command.proto` originally sketched a
+`CommandService.Deliver` unary RPC exactly this way - it was removed
+once the Command Bus (see [command-bus.md](./command-bus.md)) actually
+needed implementing and that design turned out to be unusable. Command
+routing now rides `ConnectionEnvelope`'s existing stream instead
+(`command_request`/`command_response` oneof cases), which is what let it
+be implemented without a protocol-breaking change.
 
-- **Heartbeats** ride `ConnectionService.Connect`'s stream once it's
-  implemented: a new `oneof` case on `ConnectionEnvelope` (e.g.
-  `Heartbeat`), not a new RPC.
-- **Command delivery** implements `CommandService.Deliver`. If commands
-  need to be pushed asynchronously rather than delivered as a unary call,
-  that's a new streaming RPC on `CommandService`, added alongside
-  `Deliver`.
-- **Agent operations** (restart, upgrade, configuration push) are new RPCs
-  on `AgentService`, following the same request/response wrapper pattern
-  as `GetAgentStatus`.
+- **Heartbeats** ride the same stream: a new `oneof` case on
+  `ConnectionEnvelope`, not a new RPC.
+- **Agent operations** (restart, upgrade, configuration push): as
+  written, `agent.proto`'s `AgentService.GetAgentStatus` has the same
+  control-plane-initiates-a-unary-call shape that turned out not to work
+  for commands. Expect it to be revised into `ConnectionEnvelope` oneof
+  cases too, the same way `CommandService` was, rather than implemented
+  as-is.
 
 ## Workflow
 
@@ -148,14 +153,15 @@ the next `buf generate`.
 
 ## Status
 
-This document describes the protocol's shape, not a running system. As of
-this writing:
+`ConnectionService` is implemented on both sides (see
+[connection.md](./connection.md)): `cmd/server` runs a real gRPC server,
+`cmd/agent` runs a real gRPC client, and the persistent connection
+between them - authentication, reconnection - works end to end. Command
+routing over that connection is also implemented (see
+[command-bus.md](./command-bus.md)), with three commands
+(`PING`/`GET_VERSION`/`GET_INFO`) proving it end to end.
 
-- No gRPC server exists (`cmd/server` still only serves the HTTP API from
-  [device-registration.md](./device-registration.md)).
-- No gRPC client exists in `cmd/agent`.
-- No persistent connection, heartbeat, command execution, or Docker
-  integration has been implemented.
-
-`buf lint`, `buf generate`, and `go build ./...` all succeed against what
-exists today; that's the extent of what's verified.
+Not implemented: heartbeats, Docker integration, deployments, metrics,
+log streaming, terminal access, file transfer, and `AgentService` (see
+[Future protocol evolution](#future-protocol-evolution) above for why
+its current shape needs revisiting before it is).

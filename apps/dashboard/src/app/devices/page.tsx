@@ -1,5 +1,6 @@
 import { DashboardConfigError, type Device, fetchDevices } from "@/lib/devices";
 import type { Metadata } from "next";
+import { DeviceActions } from "./device-actions";
 
 // This page always reflects live registration state, so it must never be
 // statically cached across deploys - force per-request rendering
@@ -47,24 +48,29 @@ function DevicesTable({ devices }: { devices: Device[] }) {
           <th>Architecture</th>
           <th>Registration Date</th>
           <th>Status</th>
+          <th>Actions</th>
         </tr>
       </thead>
       <tbody>
-        {devices.map((device) => (
-          <tr key={device.id}>
-            <td>{device.hostname}</td>
-            <td>{formatOperatingSystem(device.operating_system)}</td>
-            <td>{device.architecture}</td>
-            <td>{formatRegistrationDate(device.created_at)}</td>
-            <td>
-              <span
-                className={`status-badge${device.status === "connected" ? " status-badge--connected" : ""}`}
-              >
-                {formatStatus(device.status)}
-              </span>
-            </td>
-          </tr>
-        ))}
+        {devices.map((device) => {
+          const connected = device.status === "connected";
+          return (
+            <tr key={device.id}>
+              <td>{device.hostname}</td>
+              <td>{formatOperatingSystem(device.operating_system)}</td>
+              <td>{device.architecture}</td>
+              <td>{formatRegistrationDate(device.created_at)}</td>
+              <td>
+                <span className={`status-badge${connected ? " status-badge--connected" : ""}`}>
+                  {formatStatus(device.status)}
+                </span>
+              </td>
+              <td>
+                <DeviceActions deviceId={device.id} connected={connected} />
+              </td>
+            </tr>
+          );
+        })}
       </tbody>
     </table>
   );

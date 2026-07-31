@@ -62,6 +62,7 @@ func testLogger() *slog.Logger {
 type testServer struct {
 	manager  *Manager
 	verifier *fakeVerifier
+	server   *Server
 	client   deployosv1.ConnectionServiceClient
 	conn     *grpc.ClientConn
 	grpcSrv  *grpc.Server
@@ -73,9 +74,10 @@ func newTestServer(t *testing.T) *testServer {
 	lis := bufconn.Listen(bufSize)
 	manager := NewManager()
 	verifier := newFakeVerifier()
+	server := NewServer(manager, verifier, testLogger())
 
 	grpcSrv := grpc.NewServer()
-	deployosv1.RegisterConnectionServiceServer(grpcSrv, NewServer(manager, verifier, testLogger()))
+	deployosv1.RegisterConnectionServiceServer(grpcSrv, server)
 
 	go func() {
 		_ = grpcSrv.Serve(lis)
@@ -95,6 +97,7 @@ func newTestServer(t *testing.T) *testServer {
 	return &testServer{
 		manager:  manager,
 		verifier: verifier,
+		server:   server,
 		client:   deployosv1.NewConnectionServiceClient(conn),
 		conn:     conn,
 		grpcSrv:  grpcSrv,

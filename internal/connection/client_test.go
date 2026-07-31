@@ -18,6 +18,14 @@ import (
 // exercised over bufconn in server_test.go), so its tests use real TCP.
 func startTCPServer(t *testing.T, manager *Manager, verifier TokenVerifier) string {
 	t.Helper()
+	return startTCPServerWithServer(t, NewServer(manager, verifier, testLogger()))
+}
+
+// startTCPServerWithServer is like startTCPServer, but for tests that
+// need to configure server (e.g. registering OnMessage) before it starts
+// serving.
+func startTCPServerWithServer(t *testing.T, server *Server) string {
+	t.Helper()
 
 	lis, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -25,7 +33,7 @@ func startTCPServer(t *testing.T, manager *Manager, verifier TokenVerifier) stri
 	}
 
 	grpcSrv := grpc.NewServer()
-	deployosv1.RegisterConnectionServiceServer(grpcSrv, NewServer(manager, verifier, testLogger()))
+	deployosv1.RegisterConnectionServiceServer(grpcSrv, server)
 
 	go func() {
 		_ = grpcSrv.Serve(lis)

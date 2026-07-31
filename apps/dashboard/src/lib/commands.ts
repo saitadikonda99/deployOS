@@ -14,7 +14,11 @@ export interface CommandResult {
  * for real operator login, see docs/device-registration.md - never
  * reaches the browser.
  */
-export async function sendCommand(deviceId: string, kind: string): Promise<CommandResult> {
+export async function sendCommand(
+  deviceId: string,
+  kind: string,
+  args?: Record<string, string>,
+): Promise<CommandResult> {
   const apiUrl = process.env.DEPLOYOS_API_URL;
   const apiToken = process.env.DEPLOYOS_API_TOKEN;
 
@@ -28,7 +32,7 @@ export async function sendCommand(deviceId: string, kind: string): Promise<Comma
       Authorization: `Bearer ${apiToken}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ kind }),
+    body: JSON.stringify({ kind, arguments: args }),
     cache: "no-store",
   });
 

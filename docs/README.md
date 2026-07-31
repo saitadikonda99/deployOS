@@ -9,6 +9,8 @@ This directory holds documentation that goes deeper than the top-level
   registers itself with the control plane.
 - [`protocol.md`](./protocol.md) - the Protocol Buffers/gRPC protocol
   design for future agent <-> control-plane communication.
+- [`connection.md`](./connection.md) - the persistent authenticated gRPC
+  connection between agent and control plane.
 
 As DeployOS grows, add one document per subsystem here (deployments,
 networking/HTTPS, secrets, databases, monitoring, backups, clustering) rather

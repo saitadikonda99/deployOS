@@ -25,6 +25,10 @@ function formatRegistrationDate(isoDate: string): string {
   });
 }
 
+function formatStatus(status: string): string {
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
 function DevicesTable({ devices }: { devices: Device[] }) {
   if (devices.length === 0) {
     return (
@@ -53,7 +57,11 @@ function DevicesTable({ devices }: { devices: Device[] }) {
             <td>{device.architecture}</td>
             <td>{formatRegistrationDate(device.created_at)}</td>
             <td>
-              <span className="status-badge">{device.status}</span>
+              <span
+                className={`status-badge${device.status === "connected" ? " status-badge--connected" : ""}`}
+              >
+                {formatStatus(device.status)}
+              </span>
             </td>
           </tr>
         ))}

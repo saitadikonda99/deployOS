@@ -73,15 +73,17 @@ managed machine is Go.
 The **control plane** holds the source of truth for cluster state and is
 what the **dashboard** and every **agent** talk to. Each **agent** is a
 small Go binary that runs on every managed machine, reports health, and
-will execute instructions from the control plane. The two sides communicate
-over types defined once, in `pkg/protocol`, so the wire contract can't
-drift between them. A Protocol Buffers/gRPC protocol for the persistent,
-bidirectional connection future features need is designed in `proto/`
-(generated Go code in `gen/`) - see
-[`docs/protocol.md`](./docs/protocol.md) - though nothing implements it
-yet. Operators also have a `deployos` CLI
-(`cmd/cli`) for local diagnostics and, eventually, fleet management. See
-[`docs/architecture.md`](./docs/architecture.md) for more detail.
+will execute instructions from the control plane. Registration and the
+dashboard's reads go over HTTP, with types defined once in `pkg/protocol`
+so the wire contract can't drift. Alongside that, every agent holds a
+persistent, authenticated gRPC connection to the control plane
+(`internal/connection`, protocol in `proto/`/`gen/`) - the transport
+future features (heartbeats, command delivery, metrics, log streaming)
+will ride on. See [`docs/connection.md`](./docs/connection.md) and
+[`docs/protocol.md`](./docs/protocol.md). Operators also have a
+`deployos` CLI (`cmd/cli`) for local diagnostics and, eventually, fleet
+management. See [`docs/architecture.md`](./docs/architecture.md) for
+more detail.
 
 ## Repository layout
 
@@ -97,11 +99,12 @@ deployos/
 │   ├── agent/           Agent process implementation (identity, registration, health)
 │   ├── auth/            Authenticates operators against Supabase Auth
 │   ├── config/          Configuration loading (env, .env, YAML)
+│   ├── connection/      Persistent authenticated gRPC connection (client, server, Connection Manager)
 │   ├── devices/         Device registration (repository/service/handler)
 │   ├── docker/          Future container-lifecycle interface
 │   ├── logging/         Structured JSON logging
 │   ├── monitoring/      Health-check registry
-│   ├── runtime/         Shared graceful-shutdown HTTP server
+│   ├── runtime/         Shared graceful-shutdown HTTP/gRPC servers
 │   ├── scheduler/       Future job-scheduling interface
 │   ├── discovery/       Future agent/control-plane discovery
 │   └── secrets/         Future secrets storage
@@ -110,7 +113,7 @@ deployos/
 │   ├── protocol/        Wire types shared between control plane and agents
 │   └── types/           Foundational value types (agent IDs, versions)
 ├── proto/
-│   └── deployos/v1/     Protocol Buffers source (future gRPC protocol; design only)
+│   └── deployos/v1/     Protocol Buffers source (agent <-> control-plane gRPC protocol)
 ├── gen/
 │   └── go/deployos/v1/  Generated Go code from proto/ (committed, never hand-edited)
 ├── supabase/
@@ -174,24 +177,28 @@ configure the agent and control plane locally; see
 DeployOS is being built in the open, in phases:
 
 1. **Foundation** _(done)_ — monorepo scaffolding, tooling, and CI.
-2. **Device registration** _(this repository, today - see
+2. **Device registration** _(done - see
    [docs/device-registration.md](./docs/device-registration.md))_ —
    agents register themselves with the control plane and receive a
    signed device token.
-3. **Deploy from Git** — build and run an application from a repository on
+3. **Persistent connection** _(this repository, today - see
+   [docs/connection.md](./docs/connection.md))_ — agents hold a
+   persistent, authenticated gRPC connection to the control plane, with
+   automatic reconnection.
+4. **Deploy from Git** — build and run an application from a repository on
    a single node.
-4. **Automatic HTTPS** — certificate issuance and renewal with zero
+5. **Automatic HTTPS** — certificate issuance and renewal with zero
    configuration.
-5. **Docker management** — container lifecycle as a managed platform
+6. **Docker management** — container lifecycle as a managed platform
    primitive, not a manual `docker` invocation.
-6. **Secrets** — first-class secret storage and injection for deployed
+7. **Secrets** — first-class secret storage and injection for deployed
    applications.
-7. **Databases** — managed database provisioning and lifecycle.
-8. **Monitoring** — metrics, logs, and alerting out of the box.
-9. **Backups** — automated, verifiable backup and restore.
-10. **AI-powered operations** — assisted diagnosis, remediation suggestions,
+8. **Databases** — managed database provisioning and lifecycle.
+9. **Monitoring** — metrics, logs, and alerting out of the box.
+10. **Backups** — automated, verifiable backup and restore.
+11. **AI-powered operations** — assisted diagnosis, remediation suggestions,
     and operational summaries.
-11. **Multi-device fleets** — multiple machines operated as a single
+12. **Multi-device fleets** — multiple machines operated as a single
     logical cloud.
 
 Each phase ships as working software behind the same standards described

@@ -31,6 +31,13 @@ func (f *fakeAuthenticator) Authenticate(_ context.Context, token string) (auth.
 	return user, nil
 }
 
+// fakeConnectionStatusProvider reports every device as disconnected,
+// which is all these HTTP-layer tests need - connection-status behavior
+// itself is covered in internal/connection.
+type fakeConnectionStatusProvider struct{}
+
+func (fakeConnectionStatusProvider) IsConnected(types.AgentID) bool { return false }
+
 func newTestServer() (*httptest.Server, *fakeAuthenticator) {
 	authr := &fakeAuthenticator{users: map[string]auth.User{
 		"user-1-token": {ID: "user-1", Email: "user1@example.com"},
@@ -38,7 +45,7 @@ func newTestServer() (*httptest.Server, *fakeAuthenticator) {
 	}}
 
 	svc := NewService(newFakeRepository(), &fakeTokenIssuer{token: "signed-token"}, testLogger())
-	handler := NewHandler(svc, authr, testLogger())
+	handler := NewHandler(svc, authr, fakeConnectionStatusProvider{}, testLogger())
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/v1/devices/register", handler.Register)
@@ -188,5 +195,56 @@ func TestListHandlerReturnsOnlyOwnDevices(t *testing.T) {
 	}
 	if len(body.Devices) != 0 {
 		t.Fatalf("Devices = %d, want 0 (user-2 owns nothing)", len(body.Devices))
+	}
+}
+
+// connectedDeviceProvider reports a single device ID as connected and
+// everything else as disconnected.
+type connectedDeviceProvider struct {
+	connected types.AgentID
+}
+
+func (p connectedDeviceProvider) IsConnected(deviceID types.AgentID) bool {
+	return deviceID == p.connected
+}
+
+func TestListHandlerReportsLiveConnectionStatus(t *testing.T) {
+	const deviceID = "44444444-4444-4444-4444-444444444444"
+
+	authr := &fakeAuthenticator{users: map[string]auth.User{
+		"user-1-token": {ID: "user-1", Email: "user1@example.com"},
+	}}
+	svc := NewService(newFakeRepository(), &fakeTokenIssuer{token: "signed-token"}, testLogger())
+	handler := NewHandler(svc, authr, connectedDeviceProvider{connected: types.AgentID(deviceID)}, testLogger())
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /api/v1/devices/register", handler.Register)
+	mux.HandleFunc("GET /api/v1/devices", handler.List)
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	regReq, _ := http.NewRequest(http.MethodPost, srv.URL+"/api/v1/devices/register", registerRequestBody(t, deviceID))
+	regReq.Header.Set("Authorization", "Bearer user-1-token")
+	if _, err := http.DefaultClient.Do(regReq); err != nil {
+		t.Fatalf("registering device: %v", err)
+	}
+
+	listReq, _ := http.NewRequest(http.MethodGet, srv.URL+"/api/v1/devices", nil)
+	listReq.Header.Set("Authorization", "Bearer user-1-token")
+	resp, err := http.DefaultClient.Do(listReq)
+	if err != nil {
+		t.Fatalf("GET error = %v", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	var body api.ListDevicesResponse
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatalf("decoding response: %v", err)
+	}
+	if len(body.Devices) != 1 {
+		t.Fatalf("Devices = %d, want 1", len(body.Devices))
+	}
+	if body.Devices[0].Status != connectionStatusOnline {
+		t.Errorf("Status = %q, want %q", body.Devices[0].Status, connectionStatusOnline)
 	}
 }

@@ -43,6 +43,14 @@ func persistDeviceToken(dataDir, token string) error {
 	return nil
 }
 
+// loadDeviceToken reads the currently persisted device token, if any.
+// The connection client calls this on every (re)connect attempt, so it
+// always authenticates with whatever token registration most recently
+// wrote - not one captured once at startup.
+func loadDeviceToken(dataDir string) (string, bool, error) {
+	return readTrimmedFile(dataDir, deviceTokenFileName)
+}
+
 func readTrimmedFile(dataDir, name string) (string, bool, error) {
 	data, err := os.ReadFile(filepath.Join(dataDir, name))
 	if err != nil {

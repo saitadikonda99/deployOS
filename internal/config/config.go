@@ -41,6 +41,10 @@ type AgentConfig struct {
 	// APIBaseURL is the DeployOS control plane's base URL. The agent
 	// only ever talks to this API - never to Supabase directly.
 	APIBaseURL string `mapstructure:"api_base_url"`
+	// GRPCServerAddr is the control plane's gRPC address, e.g.
+	// "localhost:9090", for the persistent connection (see
+	// docs/connection.md).
+	GRPCServerAddr string `mapstructure:"grpc_server_addr"`
 	// UserAccessToken is the operator's Supabase user access token,
 	// used to authenticate device registration requests. Obtained
 	// out-of-band until a proper login flow exists.
@@ -52,6 +56,10 @@ type ServerConfig struct {
 	// HTTPAddr is the address the control plane's HTTP server listens
 	// on, e.g. ":8080".
 	HTTPAddr string `mapstructure:"http_addr"`
+	// GRPCAddr is the address the control plane's gRPC server listens
+	// on, e.g. ":9090", for the persistent agent connection (see
+	// docs/connection.md).
+	GRPCAddr string `mapstructure:"grpc_addr"`
 }
 
 // SupabaseConfig configures the control plane's connection to Supabase.
@@ -145,6 +153,7 @@ func setDefaults(v *viper.Viper) {
 
 	v.SetDefault("agent.http_addr", ":8081")
 	v.SetDefault("agent.api_base_url", "http://localhost:8080")
+	v.SetDefault("agent.grpc_server_addr", "localhost:9090")
 	// Empty-string defaults below aren't meaningful values - they exist
 	// so viper knows these keys exist and reads their environment
 	// variable overrides. Without a default (or config file entry),
@@ -154,6 +163,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("agent.user_access_token", "")
 
 	v.SetDefault("server.http_addr", ":8080")
+	v.SetDefault("server.grpc_addr", ":9090")
 
 	v.SetDefault("supabase.url", "")
 	v.SetDefault("supabase.anon_key", "")

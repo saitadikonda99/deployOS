@@ -1,7 +1,7 @@
 // Command deployos-server runs the DeployOS control plane: it loads
 // configuration, starts structured logging, and serves the device
-// registration API and a health endpoint until it receives a shutdown
-// signal.
+// registration API, the persistent agent gRPC connection, and a health
+// endpoint until it receives a shutdown signal.
 package main
 
 import (
@@ -15,9 +15,13 @@ import (
 	"syscall"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"golang.org/x/sync/errgroup"
+	"google.golang.org/grpc"
 
+	deployosv1 "github.com/saitadikonda99/deployOS/gen/go/deployos/v1"
 	"github.com/saitadikonda99/deployOS/internal/auth"
 	"github.com/saitadikonda99/deployOS/internal/config"
+	"github.com/saitadikonda99/deployOS/internal/connection"
 	"github.com/saitadikonda99/deployOS/internal/devices"
 	"github.com/saitadikonda99/deployOS/internal/logging"
 	"github.com/saitadikonda99/deployOS/internal/monitoring"
@@ -65,7 +69,9 @@ func run() error {
 	deviceRepo := devices.NewPostgresRepository(pool)
 	tokenIssuer := devices.NewJWTTokenIssuer(cfg.DeviceToken.Secret, cfg.DeviceToken.TTL)
 	deviceService := devices.NewService(deviceRepo, tokenIssuer, logger)
-	deviceHandler := devices.NewHandler(deviceService, authenticator, logger)
+
+	connManager := connection.NewManager()
+	deviceHandler := devices.NewHandler(deviceService, authenticator, connManager, logger)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", registry.Handler())
@@ -79,12 +85,21 @@ func run() error {
 	mux.HandleFunc("POST /api/v1/devices/register", deviceHandler.Register)
 	mux.HandleFunc("GET /api/v1/devices", deviceHandler.List)
 
-	handler := logging.Middleware(logger)(mux)
-	server := runtime.NewHTTPServer(cfg.Server.HTTPAddr, handler, logger)
+	httpHandler := logging.Middleware(logger)(mux)
+	httpServer := runtime.NewHTTPServer(cfg.Server.HTTPAddr, httpHandler, logger)
+
+	grpcServer := grpc.NewServer()
+	connServer := connection.NewServer(connManager, tokenIssuer, logger)
+	deployosv1.RegisterConnectionServiceServer(grpcServer, connServer)
+	grpcRuntime := runtime.NewGRPCServer(cfg.Server.GRPCAddr, grpcServer, logger)
 
 	logger.Info("starting deployos-server", slog.String("version", version))
 
-	if err := server.Run(ctx); err != nil {
+	g, gctx := errgroup.WithContext(ctx)
+	g.Go(func() error { return httpServer.Run(gctx) })
+	g.Go(func() error { return grpcRuntime.Run(gctx) })
+
+	if err := g.Wait(); err != nil {
 		return err
 	}
 

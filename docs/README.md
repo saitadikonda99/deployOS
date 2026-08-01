@@ -18,6 +18,9 @@ This directory holds documentation that goes deeper than the top-level
 - [`application-engine.md`](./application-engine.md) - the
   `Application` domain model, its lifecycle, and how it relates to the
   Runtime abstraction.
+- [`resource-engine.md`](./resource-engine.md) - the `Resource` domain
+  model, its type registry and lifecycle, and why it's independent of
+  the `Application` model.
 
 As DeployOS grows, add one document per subsystem here (deployments,
 networking/HTTPS, secrets, databases, monitoring, backups, clustering) rather

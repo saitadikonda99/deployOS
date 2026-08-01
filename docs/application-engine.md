@@ -67,6 +67,7 @@ type Application struct {
     SecretRefs           []SecretRef
     Volumes              []Volume
     Domains              []string
+    ResourceRefs         []resources.ID // see resource-engine.md
     Status               Status
     CreatedAt            time.Time
     UpdatedAt            time.Time
@@ -91,6 +92,11 @@ type Application struct {
   features (volume mounts, custom domains/reverse proxy) that don't
   exist yet either - recorded now so the model doesn't need a breaking
   change once they do.
+- **`ResourceRefs`** references `Resource`s (databases, caches, ...)
+  this Application depends on, by ID only - see
+  [resource-engine.md](./resource-engine.md) for the full `Resource`
+  model and why this reference runs one-directional (`applications`
+  depends on `resources`, never the reverse).
 
 `NewApplication(userID, name string, runtime Runtime) (Application,
 error)` generates an ID, sets `Status` to `StatusCreated`, stamps both
@@ -190,8 +196,10 @@ already has.
   validation (name slug rules, required `UserID`/`Runtime`),
   `Application.Validate` for every optional collection
   (`EnvironmentVariables`, `SecretRefs`, `Volumes`, `Domains`,
-  `Repository`), and that an `Application` with no optional fields set
-  still validates.
+  `ResourceRefs`, `Repository`), that an `Application` with no optional
+  fields set still validates, and (see
+  [resource-engine.md](./resource-engine.md)) that a real `Resource`
+  attached via `ResourceRefs` validates too.
 - `internal/applications/status_test.go`: every transition the table in
   `allowedTransitions` allows, every transition it doesn't (including
   `Failed -> Failed`), that `TransitionTo` updates `UpdatedAt` on

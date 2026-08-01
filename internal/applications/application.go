@@ -15,6 +15,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/saitadikonda99/deployOS/internal/resources"
 )
 
 // ID uniquely identifies a single Application.
@@ -118,6 +120,9 @@ var (
 	ErrInvalidVolume = errors.New("volume must have both a host path and a container path")
 	// ErrInvalidDomain is returned when a Domains entry is empty.
 	ErrInvalidDomain = errors.New("domain must not be empty")
+	// ErrInvalidResourceRef is returned when a ResourceRefs entry is
+	// an invalid resources.ID.
+	ErrInvalidResourceRef = errors.New("resource reference must be a valid resource id")
 )
 
 // Application is the domain representation of an application DeployOS
@@ -140,9 +145,17 @@ type Application struct {
 	SecretRefs           []SecretRef
 	Volumes              []Volume
 	Domains              []string
-	Status               Status
-	CreatedAt            time.Time
-	UpdatedAt            time.Time
+	// ResourceRefs are the Resources (see internal/resources) this
+	// Application depends on - a database, a cache, and so on -
+	// referenced by ID only. internal/applications depends on
+	// internal/resources for this ID type alone, never for how a
+	// Resource is provisioned; internal/resources has no dependency
+	// back. See "Why resources are independent from applications" in
+	// docs/resource-engine.md.
+	ResourceRefs []resources.ID
+	Status       Status
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 // NewApplication builds a new Application owned by userID, in
@@ -208,6 +221,11 @@ func (a Application) Validate() error {
 	for _, d := range a.Domains {
 		if d == "" {
 			return ErrInvalidDomain
+		}
+	}
+	for _, id := range a.ResourceRefs {
+		if err := id.Validate(); err != nil {
+			return fmt.Errorf("%w: %v", ErrInvalidResourceRef, err)
 		}
 	}
 	return nil

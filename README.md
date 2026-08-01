@@ -88,10 +88,15 @@ engine later without touching anything above it. Separately,
 `internal/applications` defines the `Application` domain model - what
 DeployOS deploys, as opposed to what a Runtime Engine provider actually
 runs - and its lifecycle; no deployment behavior exists yet, but future
-phases build on it. See [`docs/connection.md`](./docs/connection.md),
+phases build on it. `internal/resources` defines `Resource` - a
+database, cache, volume, secret, or domain an Application can
+reference by ID - independently of `internal/applications`, so a
+Resource can be shared, outlive, or exist without any particular
+Application. See [`docs/connection.md`](./docs/connection.md),
 [`docs/command-bus.md`](./docs/command-bus.md),
 [`docs/runtime.md`](./docs/runtime.md),
-[`docs/application-engine.md`](./docs/application-engine.md), and
+[`docs/application-engine.md`](./docs/application-engine.md),
+[`docs/resource-engine.md`](./docs/resource-engine.md), and
 [`docs/protocol.md`](./docs/protocol.md). Operators also have a
 `deployos` CLI (`cmd/cli`) for local diagnostics and, eventually, fleet
 management. See [`docs/architecture.md`](./docs/architecture.md) for
@@ -119,6 +124,7 @@ deployos/
 │   ├── devices/         Device registration (repository/service/handler)
 │   ├── logging/         Structured JSON logging
 │   ├── monitoring/      Health-check registry
+│   ├── resources/       Resource domain model, type registry, lifecycle state machine, and future interfaces
 │   ├── runtime/         Shared graceful-shutdown HTTP/gRPC servers
 │   ├── scheduler/       Future job-scheduling interface
 │   ├── discovery/       Future agent/control-plane discovery
@@ -209,22 +215,28 @@ DeployOS is being built in the open, in phases:
    interface for container observability, with Docker as its first
    provider; `LIST_CONTAINERS`/`INSPECT_CONTAINER` are its only commands
    so far.
-6. **Application Engine** _(this repository, today - see
+6. **Application Engine** _(done - see
    [docs/application-engine.md](./docs/application-engine.md))_ — the
    `Application` domain model and its lifecycle state machine; no
    deployment behavior (Git cloning, image building, actually running
    one) exists yet.
-7. **Deploy from Git** — build and run an Application from a repository
+7. **Resource Engine** _(this repository, today - see
+   [docs/resource-engine.md](./docs/resource-engine.md))_ — the
+   `Resource` domain model (databases, caches, volumes, secrets,
+   domains), its type registry, and its lifecycle state machine, plus
+   `Application.ResourceRefs` for referencing one; no provisioning
+   behavior exists yet.
+8. **Deploy from Git** — build and run an Application from a repository
    on a single node, implementing the `Engine` interface
    `internal/applications` defines.
-8. **Automatic HTTPS** — certificate issuance and renewal with zero
+9. **Automatic HTTPS** — certificate issuance and renewal with zero
    configuration.
-9. **Container lifecycle management** — start, stop, create, and delete
-   as managed platform primitives on top of the Runtime abstraction, not
-   a manual `docker` invocation.
-10. **Secrets** — first-class secret storage and injection for deployed
-    applications.
-11. **Databases** — managed database provisioning and lifecycle.
+10. **Container lifecycle management** — start, stop, create, and
+    delete as managed platform primitives on top of the Runtime
+    abstraction, not a manual `docker` invocation.
+11. **Provisioning** — implement `internal/resources.Provisioner` for
+    each built-in Resource type (PostgreSQL, Redis, volumes, secrets
+    storage, domains/TLS).
 12. **Monitoring** — metrics, logs, and alerting out of the box.
 13. **Backups** — automated, verifiable backup and restore.
 14. **AI-powered operations** — assisted diagnosis, remediation suggestions,

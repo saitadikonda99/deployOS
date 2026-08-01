@@ -3,6 +3,8 @@ package applications
 import (
 	"errors"
 	"testing"
+
+	"github.com/saitadikonda99/deployOS/internal/resources"
 )
 
 func TestNewApplicationSuccess(t *testing.T) {
@@ -220,5 +222,61 @@ func TestRuntimeValidate(t *testing.T) {
 	}
 	if err := Runtime("").Validate(); !errors.Is(err, ErrEmptyRuntime) {
 		t.Errorf("Runtime(\"\").Validate() error = %v, want %v", err, ErrEmptyRuntime)
+	}
+}
+
+// TestApplicationResourceRefsRelationship exercises the actual
+// relationship between the two domain models: an Application can
+// reference a Resource (internal/resources) that was constructed and
+// validated entirely independently of any Application. This is what
+// "Applications reference Resources by ID" means in practice - the
+// two packages cooperate through nothing more than resources.ID.
+func TestApplicationResourceRefsRelationship(t *testing.T) {
+	db, err := resources.NewResource("user-1", "primary-db", resources.TypeDatabase)
+	if err != nil {
+		t.Fatalf("resources.NewResource() error = %v", err)
+	}
+	cache, err := resources.NewResource("user-1", "session-cache", resources.TypeCache)
+	if err != nil {
+		t.Fatalf("resources.NewResource() error = %v", err)
+	}
+
+	app, err := NewApplication("user-1", "my-app", RuntimeDocker)
+	if err != nil {
+		t.Fatalf("NewApplication() error = %v", err)
+	}
+	app.ResourceRefs = []resources.ID{db.ID, cache.ID}
+
+	if err := app.Validate(); err != nil {
+		t.Errorf("Validate() error = %v, want nil", err)
+	}
+	if len(app.ResourceRefs) != 2 {
+		t.Errorf("len(ResourceRefs) = %d, want 2", len(app.ResourceRefs))
+	}
+}
+
+func TestApplicationValidateAcceptsNoResourceRefs(t *testing.T) {
+	app, err := NewApplication("user-1", "my-app", RuntimeDocker)
+	if err != nil {
+		t.Fatalf("NewApplication() error = %v", err)
+	}
+
+	// ResourceRefs is optional - an Application with none set (the
+	// common case until it depends on any infrastructure) must still
+	// validate.
+	if err := app.Validate(); err != nil {
+		t.Errorf("Validate() error = %v, want nil", err)
+	}
+}
+
+func TestApplicationValidateRejectsEmptyResourceRef(t *testing.T) {
+	app, err := NewApplication("user-1", "my-app", RuntimeDocker)
+	if err != nil {
+		t.Fatalf("NewApplication() error = %v", err)
+	}
+	app.ResourceRefs = []resources.ID{""}
+
+	if err := app.Validate(); !errors.Is(err, ErrInvalidResourceRef) {
+		t.Errorf("Validate() error = %v, want %v", err, ErrInvalidResourceRef)
 	}
 }

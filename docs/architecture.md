@@ -8,22 +8,23 @@ runs on a managed machine is Go, under [`cmd/`](../cmd),
 
 ## Components
 
-| Component                    | Language   | Responsibility                                                                                                                        |
-| ---------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------- |
-| `cmd/server`                 | Go         | Control plane: source of truth for cluster state; exposes the API the dashboard and agents use                                        |
-| `cmd/agent`                  | Go         | Runs on each managed machine; registers itself, reports health, and executes commands from the control plane                          |
-| `cmd/cli`                    | Go         | `deployos` CLI - operator entry point (version, doctor, agent management)                                                             |
-| `apps/dashboard`             | TypeScript | Web UI for operators to manage deployments, secrets, monitoring, and send device commands                                             |
-| `internal/devices`           | Go         | Device registration: repository/service/handler for `POST /api/v1/devices/register` and `GET /api/v1/devices`                         |
-| `internal/auth`              | Go         | Authenticates operators against Supabase Auth on the control plane's behalf                                                           |
-| `internal/connection`        | Go         | Persistent authenticated gRPC connection (client + server + in-memory Connection Manager) - see [connection.md](./connection.md)      |
-| `internal/commandbus`        | Go         | Command Bus: request/response command routing over the persistent connection - see [command-bus.md](./command-bus.md)                 |
-| `internal/containers`        | Go         | Runtime abstraction: engine-agnostic container observability interface - see [runtime.md](./runtime.md)                               |
-| `internal/containers/docker` | Go         | The first Runtime provider, talking to the Docker Engine API over its unix socket                                                     |
-| `internal/applications`      | Go         | Application Engine: the `Application` domain model and lifecycle state machine - see [application-engine.md](./application-engine.md) |
-| `pkg/protocol`, `pkg/types`  | Go         | Wire types and value types shared between the control plane and agents (HTTP)                                                         |
-| `pkg/api`                    | Go         | HTTP request/response contracts shared by every Go server                                                                             |
-| `gen/go/deployos/v1`         | Go         | Generated Protocol Buffers/gRPC types (see [protocol.md](./protocol.md))                                                              |
+| Component                    | Language   | Responsibility                                                                                                                            |
+| ---------------------------- | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `cmd/server`                 | Go         | Control plane: source of truth for cluster state; exposes the API the dashboard and agents use                                            |
+| `cmd/agent`                  | Go         | Runs on each managed machine; registers itself, reports health, and executes commands from the control plane                              |
+| `cmd/cli`                    | Go         | `deployos` CLI - operator entry point (version, doctor, agent management)                                                                 |
+| `apps/dashboard`             | TypeScript | Web UI for operators to manage deployments, secrets, monitoring, and send device commands                                                 |
+| `internal/devices`           | Go         | Device registration: repository/service/handler for `POST /api/v1/devices/register` and `GET /api/v1/devices`                             |
+| `internal/auth`              | Go         | Authenticates operators against Supabase Auth on the control plane's behalf                                                               |
+| `internal/connection`        | Go         | Persistent authenticated gRPC connection (client + server + in-memory Connection Manager) - see [connection.md](./connection.md)          |
+| `internal/commandbus`        | Go         | Command Bus: request/response command routing over the persistent connection - see [command-bus.md](./command-bus.md)                     |
+| `internal/containers`        | Go         | Runtime abstraction: engine-agnostic container observability interface - see [runtime.md](./runtime.md)                                   |
+| `internal/containers/docker` | Go         | The first Runtime provider, talking to the Docker Engine API over its unix socket                                                         |
+| `internal/applications`      | Go         | Application Engine: the `Application` domain model and lifecycle state machine - see [application-engine.md](./application-engine.md)     |
+| `internal/resources`         | Go         | Resource Engine: the `Resource` domain model, type registry, and lifecycle state machine - see [resource-engine.md](./resource-engine.md) |
+| `pkg/protocol`, `pkg/types`  | Go         | Wire types and value types shared between the control plane and agents (HTTP)                                                             |
+| `pkg/api`                    | Go         | HTTP request/response contracts shared by every Go server                                                                                 |
+| `gen/go/deployos/v1`         | Go         | Generated Protocol Buffers/gRPC types (see [protocol.md](./protocol.md))                                                                  |
 
 The control plane is the only component with Supabase credentials; see
 [device-registration.md](./device-registration.md) for how the agent,
@@ -36,10 +37,10 @@ control plane, and Supabase interact for that feature specifically.
 - **`internal/`** holds the implementation, split by concern
   (`config`, `logging`, `runtime`, `monitoring`, `agent`, `connection`,
   `commandbus`, `containers` (+ its `docker` provider subpackage),
-  `applications`, `devices`, `auth`, `scheduler`, `discovery`,
-  `secrets`, ...). It is unimportable outside this module, which is
-  exactly the point: these are DeployOS's own internals, not a public
-  API.
+  `applications`, `resources`, `devices`, `auth`, `scheduler`,
+  `discovery`, `secrets`, ...). It is unimportable outside this module,
+  which is exactly the point: these are DeployOS's own internals, not a
+  public API.
 - **`pkg/`** holds the small amount of Go that's meant to be shared beyond
   this module's own binaries - wire types and API contracts - so it stays
   intentionally minimal.
@@ -90,6 +91,15 @@ implementation will bridge the two, the same one-directional
 dependency `internal/commandbus`'s container commands already have on
 `internal/containers`.
 
+`internal/resources` (see [resource-engine.md](./resource-engine.md))
+depends on nothing in this codebase at all - not `internal/containers`,
+not `internal/applications`. The dependency runs the other way:
+`internal/applications` depends on `internal/resources` for a single
+ID type (`Application.ResourceRefs []resources.ID`), so an Application
+can declare which databases, caches, volumes, secrets, and domains it
+needs without either package needing to know how the other's
+lifecycle, validation, or (eventually) provisioning actually works.
+
 ## Status
 
 This document describes the intended shape of the system as features land.
@@ -98,11 +108,15 @@ the persistent authenticated gRPC connection
 ([connection.md](./connection.md)), the Command Bus
 ([command-bus.md](./command-bus.md)), the Runtime abstraction with
 its Docker provider ([runtime.md](./runtime.md), observability only -
-`LIST_CONTAINERS`/`INSPECT_CONTAINER`), and the Application domain
-model with its lifecycle state machine
+`LIST_CONTAINERS`/`INSPECT_CONTAINER`), the Application domain model
+with its lifecycle state machine
 ([application-engine.md](./application-engine.md), no deployment
-behavior yet) are implemented. Heartbeats, container lifecycle
-operations (start, stop, create, delete), image/network/volume
-management, an Application Engine implementation, Git cloning, image
-building, deployments, HTTPS, secrets, databases, monitoring, backups,
-and clustering are not yet implemented.
+behavior yet), and the Resource domain model with its type registry
+and lifecycle state machine
+([resource-engine.md](./resource-engine.md), no provisioning behavior
+yet) are implemented. Heartbeats, container lifecycle operations
+(start, stop, create, delete), image/network/volume management, an
+Application Engine implementation, a Resource Engine implementation,
+Git cloning, image building, PostgreSQL/Redis provisioning, secrets
+storage, domain/DNS/TLS handling, deployments, HTTPS, databases,
+monitoring, backups, and clustering are not yet implemented.

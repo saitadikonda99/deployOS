@@ -1,5 +1,6 @@
 import { DashboardConfigError, type Device, fetchDevices } from "@/lib/devices";
 import type { Metadata } from "next";
+import { ContainerList } from "./container-list";
 import { DeviceActions } from "./device-actions";
 
 // This page always reflects live registration state, so it must never be
@@ -49,6 +50,7 @@ function DevicesTable({ devices }: { devices: Device[] }) {
           <th>Registration Date</th>
           <th>Status</th>
           <th>Actions</th>
+          <th>Containers</th>
         </tr>
       </thead>
       <tbody>
@@ -67,6 +69,9 @@ function DevicesTable({ devices }: { devices: Device[] }) {
               </td>
               <td>
                 <DeviceActions deviceId={device.id} connected={connected} />
+              </td>
+              <td>
+                <ContainerList deviceId={device.id} connected={connected} />
               </td>
             </tr>
           );

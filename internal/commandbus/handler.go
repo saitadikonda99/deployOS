@@ -86,7 +86,7 @@ func (h *Handler) Send(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), defaultSendTimeout)
 	defer cancel()
 
-	resp, err := h.service.Send(ctx, deviceID, Request{Kind: req.Kind})
+	resp, err := h.service.Send(ctx, deviceID, Request{Kind: req.Kind, Arguments: req.Arguments})
 	switch {
 	case errors.Is(err, ErrDeviceNotConnected):
 		writeError(w, http.StatusServiceUnavailable, "device is not connected")

@@ -169,3 +169,47 @@ func TestIntegrationMultipleConcurrentCommandsRoundTrip(t *testing.T) {
 		}
 	}
 }
+
+// TestIntegrationContainerCommandsRoundTrip proves LIST_CONTAINERS and
+// INSPECT_CONTAINER round-trip over a real connection like any other
+// command - including that Request.Arguments (INSPECT_CONTAINER's "id")
+// actually survives the wire. It uses stand-in executors, not
+// internal/agent's real ones, since commandbus has no knowledge of
+// containers.
+func TestIntegrationContainerCommandsRoundTrip(t *testing.T) {
+	const deviceID = types.AgentID("device-1")
+
+	rig := newIntegrationRig(t, deviceID)
+
+	dispatcher := NewDispatcher(testLogger())
+	dispatcher.Register(KindListContainers, ExecutorFunc(func(_ context.Context, _ Request) Response {
+		return Response{Success: true, Details: map[string]string{"containers": `[{"id":"c1"}]`}}
+	}))
+	dispatcher.Register(KindInspectContainer, ExecutorFunc(func(_ context.Context, req Request) Response {
+		if req.Arguments["id"] != "c1" {
+			return Response{Success: false, Message: "missing or wrong id argument"}
+		}
+		return Response{Success: true, Details: map[string]string{"container": `{"id":"c1"}`}}
+	}))
+	rig.client.OnCommand(WireHandler(dispatcher))
+	rig.start(t, deviceID)
+
+	listResp, err := rig.service.Send(context.Background(), deviceID, Request{Kind: KindListContainers})
+	if err != nil {
+		t.Fatalf("Send(LIST_CONTAINERS) error = %v", err)
+	}
+	if !listResp.Success || listResp.Details["containers"] == "" {
+		t.Fatalf("Send(LIST_CONTAINERS) = %+v, want Success=true with a containers detail", listResp)
+	}
+
+	inspectResp, err := rig.service.Send(context.Background(), deviceID, Request{
+		Kind:      KindInspectContainer,
+		Arguments: map[string]string{"id": "c1"},
+	})
+	if err != nil {
+		t.Fatalf("Send(INSPECT_CONTAINER) error = %v", err)
+	}
+	if !inspectResp.Success || inspectResp.Details["container"] == "" {
+		t.Fatalf("Send(INSPECT_CONTAINER) = %+v, want Success=true with a container detail", inspectResp)
+	}
+}

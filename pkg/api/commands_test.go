@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"reflect"
 	"testing"
 )
 
@@ -17,7 +18,24 @@ func TestSendCommandRequestRoundTripsThroughJSON(t *testing.T) {
 	if err := json.Unmarshal(data, &decoded); err != nil {
 		t.Fatalf("Unmarshal() error = %v", err)
 	}
-	if decoded != req {
+	if !reflect.DeepEqual(decoded, req) {
+		t.Fatalf("decoded request = %+v, want %+v", decoded, req)
+	}
+}
+
+func TestSendCommandRequestWithArgumentsRoundTripsThroughJSON(t *testing.T) {
+	req := SendCommandRequest{Kind: "INSPECT_CONTAINER", Arguments: map[string]string{"id": "c1"}}
+
+	data, err := json.Marshal(req)
+	if err != nil {
+		t.Fatalf("Marshal() error = %v", err)
+	}
+
+	var decoded SendCommandRequest
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		t.Fatalf("Unmarshal() error = %v", err)
+	}
+	if !reflect.DeepEqual(decoded, req) {
 		t.Fatalf("decoded request = %+v, want %+v", decoded, req)
 	}
 }

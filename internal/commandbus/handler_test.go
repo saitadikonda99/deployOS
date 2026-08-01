@@ -71,7 +71,12 @@ func (ts *testHandlerServer) Close() {
 
 func sendCommandBody(t *testing.T, kind string) *bytes.Reader {
 	t.Helper()
-	body, err := json.Marshal(api.SendCommandRequest{Kind: kind})
+	return sendCommandBodyWithArguments(t, kind, nil)
+}
+
+func sendCommandBodyWithArguments(t *testing.T, kind string, arguments map[string]string) *bytes.Reader {
+	t.Helper()
+	body, err := json.Marshal(api.SendCommandRequest{Kind: kind, Arguments: arguments})
 	if err != nil {
 		t.Fatalf("marshaling request: %v", err)
 	}
@@ -200,4 +205,26 @@ func TestHandlerSendSucceeds(t *testing.T) {
 	if !body.Success || body.Message != "pong" {
 		t.Errorf("response = %+v, want Success=true Message=pong", body)
 	}
+}
+
+func TestHandlerSendPassesArgumentsThrough(t *testing.T) {
+	ts := newTestHandlerServer(nil)
+	defer ts.Close()
+
+	go func() {
+		req, _ := http.NewRequest(http.MethodPost, ts.srv.URL+"/api/v1/devices/device-1/commands",
+			sendCommandBodyWithArguments(t, "INSPECT_CONTAINER", map[string]string{"id": "c1"}))
+		req.Header.Set("Authorization", "Bearer user-1-token")
+		resp, err := http.DefaultClient.Do(req)
+		if err == nil {
+			_ = resp.Body.Close()
+		}
+	}()
+
+	ids := ts.sender.waitForIDs(t, 1)
+	envelope := ts.sender.env[ids[0]]
+	if got := envelope.GetCommandRequest().GetArguments().GetEntries()["id"]; got != "c1" {
+		t.Errorf("sent command arguments[id] = %q, want %q", got, "c1")
+	}
+	ts.service.HandleResult(types.AgentID("device-1"), resultEnvelope(ids[0], true, "ok"))
 }

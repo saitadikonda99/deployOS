@@ -80,8 +80,14 @@ control plane (`internal/connection`, protocol in `proto/`/`gen/`), which
 the Command Bus (`internal/commandbus`) uses to route request/response
 commands from the control plane to an agent and back - the transport
 future features (heartbeats, metrics, log streaming) will ride on the
-same connection. See [`docs/connection.md`](./docs/connection.md),
-[`docs/command-bus.md`](./docs/command-bus.md), and
+same connection. One of those commands observes containers on the
+agent's machine through the Runtime abstraction
+(`internal/containers`), an interface implemented today by
+`internal/containers/docker` and, in principle, by any other container
+engine later without touching anything above it. See
+[`docs/connection.md`](./docs/connection.md),
+[`docs/command-bus.md`](./docs/command-bus.md),
+[`docs/runtime.md`](./docs/runtime.md), and
 [`docs/protocol.md`](./docs/protocol.md). Operators also have a
 `deployos` CLI (`cmd/cli`) for local diagnostics and, eventually, fleet
 management. See [`docs/architecture.md`](./docs/architecture.md) for
@@ -103,8 +109,9 @@ deployos/
 │   ├── config/          Configuration loading (env, .env, YAML)
 │   ├── commandbus/      Command Bus: request/response command routing over the connection
 │   ├── connection/      Persistent authenticated gRPC connection (client, server, Connection Manager)
+│   ├── containers/      Runtime abstraction: engine-agnostic container observability interface
+│   │   └── docker/      The first Runtime provider (Docker Engine API over its unix socket)
 │   ├── devices/         Device registration (repository/service/handler)
-│   ├── docker/          Future container-lifecycle interface
 │   ├── logging/         Structured JSON logging
 │   ├── monitoring/      Health-check registry
 │   ├── runtime/         Shared graceful-shutdown HTTP/gRPC servers
@@ -188,25 +195,30 @@ DeployOS is being built in the open, in phases:
    [docs/connection.md](./docs/connection.md))_ — agents hold a
    persistent, authenticated gRPC connection to the control plane, with
    automatic reconnection.
-4. **Command Bus** _(this repository, today - see
+4. **Command Bus** _(done - see
    [docs/command-bus.md](./docs/command-bus.md))_ — generic
    request/response command routing between the control plane and an
-   agent, over the persistent connection; `PING`/`GET_VERSION`/`GET_INFO`
-   are its only commands so far.
-5. **Deploy from Git** — build and run an application from a repository on
+   agent, over the persistent connection.
+5. **Runtime abstraction** _(this repository, today - see
+   [docs/runtime.md](./docs/runtime.md))_ — an engine-agnostic `Runtime`
+   interface for container observability, with Docker as its first
+   provider; `LIST_CONTAINERS`/`INSPECT_CONTAINER` are its only commands
+   so far.
+6. **Deploy from Git** — build and run an application from a repository on
    a single node.
-6. **Automatic HTTPS** — certificate issuance and renewal with zero
+7. **Automatic HTTPS** — certificate issuance and renewal with zero
    configuration.
-7. **Docker management** — container lifecycle as a managed platform
-   primitive, not a manual `docker` invocation.
-8. **Secrets** — first-class secret storage and injection for deployed
+8. **Container lifecycle management** — start, stop, create, and delete
+   as managed platform primitives on top of the Runtime abstraction, not
+   a manual `docker` invocation.
+9. **Secrets** — first-class secret storage and injection for deployed
    applications.
-9. **Databases** — managed database provisioning and lifecycle.
-10. **Monitoring** — metrics, logs, and alerting out of the box.
-11. **Backups** — automated, verifiable backup and restore.
-12. **AI-powered operations** — assisted diagnosis, remediation suggestions,
+10. **Databases** — managed database provisioning and lifecycle.
+11. **Monitoring** — metrics, logs, and alerting out of the box.
+12. **Backups** — automated, verifiable backup and restore.
+13. **AI-powered operations** — assisted diagnosis, remediation suggestions,
     and operational summaries.
-13. **Multi-device fleets** — multiple machines operated as a single
+14. **Multi-device fleets** — multiple machines operated as a single
     logical cloud.
 
 Each phase ships as working software behind the same standards described

@@ -22,14 +22,16 @@ import (
 	deployosv1 "github.com/saitadikonda99/deployOS/gen/go/deployos/v1"
 )
 
-// Kind values for the three commands implemented in this phase. A
-// command's kind is a free-form string on the wire (see
-// proto/deployos/v1/command.proto), not a proto enum, so adding a new
-// one is never a breaking protocol change.
+// Kind values for the commands implemented so far. A command's kind is
+// a free-form string on the wire (see proto/deployos/v1/command.proto),
+// not a proto enum, so adding a new one is never a breaking protocol
+// change.
 const (
-	KindPing       = "PING"
-	KindGetVersion = "GET_VERSION"
-	KindGetInfo    = "GET_INFO"
+	KindPing             = "PING"
+	KindGetVersion       = "GET_VERSION"
+	KindGetInfo          = "GET_INFO"
+	KindListContainers   = "LIST_CONTAINERS"
+	KindInspectContainer = "INSPECT_CONTAINER"
 )
 
 // Request is a command's kind and arguments, independent of how it

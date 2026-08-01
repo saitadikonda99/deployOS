@@ -43,6 +43,7 @@ func run() error {
 		APIBaseURL:      cfg.Agent.APIBaseURL,
 		GRPCServerAddr:  cfg.Agent.GRPCServerAddr,
 		UserAccessToken: cfg.Agent.UserAccessToken,
+		DockerSocket:    cfg.Agent.DockerSocket,
 	}, logger)
 
 	logger.Info("starting deployos-agent", slog.String("version", version))

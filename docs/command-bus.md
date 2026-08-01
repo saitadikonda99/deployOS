@@ -5,9 +5,11 @@ control plane and an agent, implemented in `internal/commandbus` on top
 of the persistent gRPC connection (see [connection.md](./connection.md)).
 It is the communication layer every future DeployOS capability - Docker
 management, deployments, log streaming, terminal access, file transfer -
-is expected to be built on. This phase implements routing only: three
-commands (`PING`, `GET_VERSION`, `GET_INFO`) exist solely to prove the
-bus works end to end.
+is built on. `PING`, `GET_VERSION`, and `GET_INFO` proved the bus works
+end to end; `LIST_CONTAINERS` and `INSPECT_CONTAINER` (see
+[runtime.md](./runtime.md)) are the first commands built on top of it
+for a real capability - observing containers through the new Runtime
+abstraction.
 
 ## Why it rides the existing connection
 
@@ -39,11 +41,11 @@ Control Plane                                          Agent
   (routes by device ID,                             - Register(kind, executor)
    Send/OnMessage)                                   - Dispatch(ctx, req) → resp
                                                                 │
-                                                    ┌───────────┴───────────┐
-                                                    ▼           ▼           ▼
-                                                  PING   GET_VERSION   GET_INFO
-                                                (executors registered in
-                                                 internal/agent/handlers.go)
+                                        ┌───────────┼───────────┬───────────────┬──────────────────┐
+                                        ▼           ▼           ▼               ▼                  ▼
+                                      PING   GET_VERSION   GET_INFO   LIST_CONTAINERS   INSPECT_CONTAINER
+                                    (executors registered in internal/agent/handlers.go;
+                                     the last two call internal/containers.Runtime - see runtime.md)
 ```
 
 - **`commandbus.Service`** (control plane): creates a command, sends it
@@ -65,8 +67,12 @@ Control Plane                                          Agent
   conversion lives in `internal/commandbus`, not in agent-specific code.
 
 Neither `Service` nor `Dispatcher` knows anything about Docker,
-deployments, or any other feature - only the three commands
-`internal/agent/handlers.go` explicitly registers exist.
+deployments, or any other feature - only the commands
+`internal/agent/handlers.go` explicitly registers exist. That's true
+even for `LIST_CONTAINERS`/`INSPECT_CONTAINER`: their executors call
+`internal/containers.Runtime`, a Docker-agnostic interface (see
+[runtime.md](./runtime.md)), so `internal/commandbus` still never
+imports anything container- or Docker-specific.
 
 ## Handler registration
 
@@ -166,8 +172,9 @@ becomes a `504 Gateway Timeout` response.
 - `integration_test.go` wires the real `connection.Server`/`Client` and
   `commandbus.Service`/`Dispatcher` together over a live TCP connection -
   the same shape `cmd/server`/`cmd/agent` use in production - for a
-  `PING` round trip, an unknown command, and multiple concurrent
-  commands.
+  `PING` round trip, an unknown command, multiple concurrent commands,
+  and `LIST_CONTAINERS`/`INSPECT_CONTAINER` (proving `Request.Arguments`
+  survives the wire).
 - Manually verified against the real compiled `deployos-agent` binary:
   `PING`, `GET_VERSION`, and `GET_INFO` all returned correct, real
   results (actual hostname/CPU/memory), and an unrecognized command kind
@@ -175,9 +182,12 @@ becomes a `504 Gateway Timeout` response.
 
 ## Known limitations
 
-- Only `PING`, `GET_VERSION`, and `GET_INFO` exist. Everything else
-  (Docker, deployments, heartbeats, metrics, log streaming, terminal
-  access, file transfer) is explicitly out of scope for this phase.
+- Five commands exist: `PING`, `GET_VERSION`, `GET_INFO`,
+  `LIST_CONTAINERS`, and `INSPECT_CONTAINER` (see
+  [runtime.md](./runtime.md)). Everything else (deployments, heartbeats,
+  metrics, log streaming, terminal access, file transfer, and any
+  container lifecycle operation - start, stop, create, delete) is
+  explicitly out of scope so far.
 - `Send` waits for exactly one result per command. A future command that
   needs to stream partial progress (e.g. a long-running deployment)
   will need its own envelope kind(s) - this bus doesn't preclude that,

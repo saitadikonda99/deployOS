@@ -101,6 +101,11 @@ th {
   color: var(--color-online);
 }
 
+.status-badge--failed {
+  background: color-mix(in srgb, #dc2626 15%, transparent);
+  color: #dc2626;
+}
+
 .empty-state,
 .error-state {
   margin-top: 1.5rem;

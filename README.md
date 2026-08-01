@@ -84,10 +84,14 @@ same connection. One of those commands observes containers on the
 agent's machine through the Runtime abstraction
 (`internal/containers`), an interface implemented today by
 `internal/containers/docker` and, in principle, by any other container
-engine later without touching anything above it. See
-[`docs/connection.md`](./docs/connection.md),
+engine later without touching anything above it. Separately,
+`internal/applications` defines the `Application` domain model - what
+DeployOS deploys, as opposed to what a Runtime Engine provider actually
+runs - and its lifecycle; no deployment behavior exists yet, but future
+phases build on it. See [`docs/connection.md`](./docs/connection.md),
 [`docs/command-bus.md`](./docs/command-bus.md),
-[`docs/runtime.md`](./docs/runtime.md), and
+[`docs/runtime.md`](./docs/runtime.md),
+[`docs/application-engine.md`](./docs/application-engine.md), and
 [`docs/protocol.md`](./docs/protocol.md). Operators also have a
 `deployos` CLI (`cmd/cli`) for local diagnostics and, eventually, fleet
 management. See [`docs/architecture.md`](./docs/architecture.md) for
@@ -105,6 +109,7 @@ deployos/
 │   └── cli/             deployos CLI entry point (Go, Cobra)
 ├── internal/
 │   ├── agent/           Agent process implementation (identity, registration, health)
+│   ├── applications/    Application domain model, lifecycle state machine, and future interfaces
 │   ├── auth/            Authenticates operators against Supabase Auth
 │   ├── config/          Configuration loading (env, .env, YAML)
 │   ├── commandbus/      Command Bus: request/response command routing over the connection
@@ -199,26 +204,32 @@ DeployOS is being built in the open, in phases:
    [docs/command-bus.md](./docs/command-bus.md))_ — generic
    request/response command routing between the control plane and an
    agent, over the persistent connection.
-5. **Runtime abstraction** _(this repository, today - see
+5. **Runtime abstraction** _(done - see
    [docs/runtime.md](./docs/runtime.md))_ — an engine-agnostic `Runtime`
    interface for container observability, with Docker as its first
    provider; `LIST_CONTAINERS`/`INSPECT_CONTAINER` are its only commands
    so far.
-6. **Deploy from Git** — build and run an application from a repository on
-   a single node.
-7. **Automatic HTTPS** — certificate issuance and renewal with zero
+6. **Application Engine** _(this repository, today - see
+   [docs/application-engine.md](./docs/application-engine.md))_ — the
+   `Application` domain model and its lifecycle state machine; no
+   deployment behavior (Git cloning, image building, actually running
+   one) exists yet.
+7. **Deploy from Git** — build and run an Application from a repository
+   on a single node, implementing the `Engine` interface
+   `internal/applications` defines.
+8. **Automatic HTTPS** — certificate issuance and renewal with zero
    configuration.
-8. **Container lifecycle management** — start, stop, create, and delete
+9. **Container lifecycle management** — start, stop, create, and delete
    as managed platform primitives on top of the Runtime abstraction, not
    a manual `docker` invocation.
-9. **Secrets** — first-class secret storage and injection for deployed
-   applications.
-10. **Databases** — managed database provisioning and lifecycle.
-11. **Monitoring** — metrics, logs, and alerting out of the box.
-12. **Backups** — automated, verifiable backup and restore.
-13. **AI-powered operations** — assisted diagnosis, remediation suggestions,
+10. **Secrets** — first-class secret storage and injection for deployed
+    applications.
+11. **Databases** — managed database provisioning and lifecycle.
+12. **Monitoring** — metrics, logs, and alerting out of the box.
+13. **Backups** — automated, verifiable backup and restore.
+14. **AI-powered operations** — assisted diagnosis, remediation suggestions,
     and operational summaries.
-14. **Multi-device fleets** — multiple machines operated as a single
+15. **Multi-device fleets** — multiple machines operated as a single
     logical cloud.
 
 Each phase ships as working software behind the same standards described

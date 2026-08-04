@@ -15,6 +15,9 @@ This directory holds documentation that goes deeper than the top-level
   routing between the control plane and an agent.
 - [`runtime.md`](./runtime.md) - the Runtime abstraction and its first
   provider (Docker), for observing containers on a managed machine.
+- [`application-engine.md`](./application-engine.md) - the
+  `Application` domain model, its lifecycle, and how it relates to the
+  Runtime abstraction.
 
 As DeployOS grows, add one document per subsystem here (deployments,
 networking/HTTPS, secrets, databases, monitoring, backups, clustering) rather

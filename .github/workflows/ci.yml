@@ -50,8 +50,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.24"
-          check-latest: true
+          go-version-file: go.mod
           cache: true
 
       - name: Format check
@@ -61,7 +60,7 @@ jobs:
       - name: Vet
         run: go vet ./...
 
-      - uses: golangci/golangci-lint-action@v6
+      - uses: golangci/golangci-lint-action@v9
         with:
           version: latest
 
@@ -79,8 +78,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version: "1.24"
-          check-latest: true
+          go-version-file: go.mod
           cache: true
 
       - uses: bufbuild/buf-setup-action@v1
